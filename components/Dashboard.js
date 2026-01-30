@@ -8,7 +8,6 @@ const html = htm.bind(React.createElement);
 
 export const Dashboard = ({ templates, history, onStartWorkout, onNavigateToHistory, onImportHistory }) => {
   const fileInputRef = useRef(null);
-  const [showSetup, setShowSetup] = useState(false);
 
   const chartData = history.slice(0, 7).reverse().map(h => ({
     name: new Date(h.date).toLocaleDateString('de-DE', { weekday: 'short' }),
@@ -55,29 +54,6 @@ export const Dashboard = ({ templates, history, onStartWorkout, onNavigateToHist
             </button>
           `)}
         </div>
-      </section>
-
-      <section className="bg-indigo-950/30 p-6 rounded-[32px] border border-indigo-500/30 shadow-xl">
-        <button onClick=${() => setShowSetup(!showSetup)} className="w-full flex items-center justify-between text-indigo-400">
-          <div className="flex items-center gap-3">
-            <${Smartphone} className="w-5 h-5" />
-            <h2 className="text-sm font-black uppercase tracking-widest">Als App installieren</h2>
-          </div>
-          <${ChevronRight} className=${`w-5 h-5 transition-transform ${showSetup ? 'rotate-90' : ''}`} />
-        </button>
-        ${showSetup && html`
-          <div className="mt-6 space-y-4">
-            <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400"><${Share} size=${20}/></div>
-                <div>
-                  <p className="text-white font-bold text-xs">iPhone (Safari)</p>
-                  <p className="text-[10px] text-slate-400">Teilen -> "Zum Home-Bildschirm"</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        `}
       </section>
 
       ${history.length > 0 && html`
