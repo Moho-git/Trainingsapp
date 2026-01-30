@@ -1,7 +1,7 @@
 
 import React, { useRef, useState } from 'react';
 import { CompletedWorkout, WorkoutTemplate } from '../types';
-import { Play, TrendingUp, Download, Upload, ShieldCheck, Smartphone, Info, ChevronRight, Share, MoreVertical, Globe } from 'lucide-react';
+import { Play, TrendingUp, Download, Upload, ShieldCheck, Smartphone, ChevronRight, Share, MoreVertical, Github } from 'lucide-react';
 import { BarChart, Bar, XAxis, ResponsiveContainer, Cell } from 'recharts';
 
 interface DashboardProps {
@@ -43,7 +43,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     <div className="space-y-6 pb-20">
       <header className="mb-6">
         <h1 className="text-4xl font-black text-white mb-2 tracking-tight">KraftLog</h1>
-        <p className="text-slate-400 font-medium italic">Privat. Lokal. Schnell.</p>
+        <p className="text-slate-400 font-medium italic">Privat. Lokal. Sicher.</p>
       </header>
 
       <section>
@@ -69,25 +69,36 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </section>
 
-      <section className="bg-indigo-950/30 p-6 rounded-[32px] border border-indigo-500/30">
+      <section className="bg-indigo-950/30 p-6 rounded-[32px] border border-indigo-500/30 shadow-xl">
         <button onClick={() => setShowSetup(!showSetup)} className="w-full flex items-center justify-between text-indigo-400">
           <div className="flex items-center gap-3">
-            <Globe className="w-5 h-5" />
-            <h2 className="text-sm font-black uppercase tracking-widest">Handy-App Anleitung</h2>
+            <Smartphone className="w-5 h-5" />
+            <h2 className="text-sm font-black uppercase tracking-widest">Als App installieren</h2>
           </div>
           <ChevronRight className={`w-5 h-5 transition-transform ${showSetup ? 'rotate-90' : ''}`} />
         </button>
         
         {showSetup && (
           <div className="mt-6 space-y-4 animate-setup">
-            <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
-              <p className="text-white font-bold text-xs mb-3">Kostenlos & Privat mit Vercel:</p>
-              <ol className="text-xs text-slate-400 space-y-3 list-decimal ml-4">
-                <li>Gehe auf <b>vercel.com</b> und verbinde dein (privates!) GitHub-Repo.</li>
-                <li>Vercel gibt dir eine private HTTPS-URL.</li>
-                <li>Öffne die URL am Handy.</li>
-                <li>Tippe auf <Share className="inline w-3 h-3"/> (iOS) oder <MoreVertical className="inline w-3 h-3"/> (Android) und wähle <b>"Zum Home-Bildschirm"</b>.</li>
-              </ol>
+            <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400"><Share size={20}/></div>
+                <div>
+                  <p className="text-white font-bold text-xs">iPhone (Safari)</p>
+                  <p className="text-[10px] text-slate-400">Teilen-Button drücken -> "Zum Home-Bildschirm"</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400"><MoreVertical size={20}/></div>
+                <div>
+                  <p className="text-white font-bold text-xs">Android (Chrome)</p>
+                  <p className="text-[10px] text-slate-400">Drei Punkte oben rechts -> "App installieren"</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 items-center text-[10px] text-indigo-300/50 bg-indigo-500/5 p-3 rounded-xl border border-indigo-500/10">
+              <Github size={12} />
+              <p>Gehostet via GitHub Pages (Privat-Daten bleiben lokal)</p>
             </div>
           </div>
         )}
