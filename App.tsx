@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, History as HistoryIcon } from 'lucide-react';
-import { CompletedWorkout, WorkoutTemplate, Exercise } from './types';
-import { DEFAULT_EXERCISES, DEFAULT_TEMPLATES } from './constants';
+import { CompletedWorkout, WorkoutTemplate, Exercise } from './types.ts';
+import { DEFAULT_EXERCISES, DEFAULT_TEMPLATES } from './constants.ts';
 
-import { Dashboard } from './components/Dashboard';
-import { ActiveWorkout } from './components/ActiveWorkout';
-import { History } from './components/History';
+import { Dashboard } from './components/Dashboard.tsx';
+import { ActiveWorkout } from './components/ActiveWorkout.tsx';
+import { History } from './components/History.tsx';
 
 const BottomNav = ({ activeTab, onTabChange }: { activeTab: string, onTabChange: (t: string) => void }) => (
   <nav className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 pb-safe z-40">
