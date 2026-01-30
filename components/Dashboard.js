@@ -72,12 +72,12 @@ export const Dashboard = ({
           <${Scale} className="w-4 h-4 text-emerald-500" /> Gewicht tracken
         </h2>
         <form onSubmit=${handleAddWeightSubmit} className="space-y-3">
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-stretch">
             <input 
               type="date"
               value=${dateInput}
               onChange=${(e) => setDateInput(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-3 text-white outline-none focus:border-emerald-500 transition-all text-xs w-1/3"
+              className="bg-slate-950 border border-slate-800 rounded-xl px-2 py-3 text-white outline-none focus:border-emerald-500 transition-all text-[10px] w-[30%] min-w-0"
             />
             <input 
               type="number" 
@@ -86,13 +86,13 @@ export const Dashboard = ({
               placeholder="kg"
               value=${weightInput}
               onChange=${(e) => setWeightInput(e.target.value)}
-              className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-emerald-500 transition-all font-bold"
+              className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-3 text-white outline-none focus:border-emerald-500 transition-all font-bold text-sm min-w-0"
             />
             <button 
               type="submit"
-              className="w-12 h-12 bg-emerald-600 text-white rounded-xl flex items-center justify-center active:scale-95 transition-all shadow-lg"
+              className="px-4 bg-emerald-600 text-white rounded-xl flex items-center justify-center active:scale-95 transition-all shadow-lg hover:bg-emerald-500 shrink-0"
             >
-              <${Plus} />
+              <${Plus} size=${20} />
             </button>
           </div>
           <p className="text-[9px] text-slate-500 text-center italic">Für Analysen siehe den "Gewicht" Tab.</p>
