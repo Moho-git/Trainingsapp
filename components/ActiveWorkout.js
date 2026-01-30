@@ -43,11 +43,34 @@ export const ActiveWorkout = ({ template, allExercises, history, onFinish, onCan
     return prevWorkout.exercises.find(e => e.exerciseId === exerciseId);
   };
 
+  const handleFinishWorkout = () => {
+    onFinish({
+      id: generateId(),
+      templateId: template.id,
+      name: template.name,
+      date: new Date().toISOString(),
+      durationMinutes: Math.ceil(elapsedTime / 60),
+      exercises: exercises.filter(ex => ex.sets.some(s => s.completed || s.weight > 0))
+    });
+  };
+
   const updateSet = (exIndex, setIndex, field, value) => {
     const newExercises = [...exercises];
     const set = newExercises[exIndex].sets[setIndex];
+    
     if (field === 'completed') {
-        set.completed = value;
+        const isCompleting = value;
+        // Smart-Fill: Falls Werte leer sind und wir abhaken, nimm die vom letzten Mal
+        if (isCompleting && set.weight === 0 && set.reps === 0) {
+            const lastData = getLastSessionData(newExercises[exIndex].exerciseId);
+            const prevSet = lastData?.sets[setIndex];
+            if (prevSet) {
+                set.weight = prevSet.weight;
+                set.reps = prevSet.reps;
+                set.rir = prevSet.rir || 0;
+            }
+        }
+        set.completed = isCompleting;
     } else {
         set[field] = value === '' ? 0 : Number(value);
     }
@@ -67,49 +90,27 @@ export const ActiveWorkout = ({ template, allExercises, history, onFinish, onCan
     setExercises(newExercises);
   };
 
-  const removeExercise = (index) => {
-    setExercises(exercises.filter((_, i) => i !== index));
-  };
-
-  const addNewExercise = (exId) => {
-    setExercises([...exercises, {
-      exerciseId: exId,
-      sets: [{ id: generateId(), weight: 0, reps: 0, rir: 0, completed: false }]
-    }]);
-    setShowAddExercise(false);
-  };
-
-  const handleFinishWorkout = () => {
-    onFinish({
-      id: generateId(),
-      name: template.name,
-      date: new Date().toISOString(),
-      durationMinutes: Math.ceil(elapsedTime / 60),
-      exercises: exercises.filter(ex => ex.sets.some(s => s.completed))
-    });
-  };
-
   if (!isStarted) {
     return html`
         <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col overflow-hidden">
-            <header className="p-4 h-20 border-b border-slate-800 bg-slate-900 flex items-center justify-between shrink-0">
-                <button onClick=${onCancel} className="h-12 px-6 bg-slate-800 rounded-2xl flex items-center gap-2 font-bold active:bg-slate-700 transition-all text-white">
+            <header className="p-4 h-20 border-b border-slate-800 bg-slate-900 flex items-center justify-between shrink-0 pt-safe">
+                <button onClick=${onCancel} className="h-12 px-6 bg-slate-800 rounded-2xl flex items-center gap-2 font-bold active:bg-slate-700 transition-all text-white text-sm">
                   <${ChevronLeft} /> Zurück
                 </button>
-                <h2 className="font-bold text-white">Check</h2>
+                <h2 className="font-bold text-white">Vorbereitung</h2>
                 <div className="w-12"></div>
             </header>
             
             <main className="flex-1 overflow-y-auto p-4 space-y-4">
                 <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 mb-2">
                     <h1 className="text-2xl font-black text-white">${template.name}</h1>
-                    <p className="text-slate-500 text-sm mt-1">Checke deine Übungen.</p>
+                    <p className="text-slate-500 text-sm mt-1">Checke deine Übungen für heute.</p>
                 </div>
 
                 ${exercises.map((ex, idx) => html`
                     <div key=${idx} className="flex items-center justify-between bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-lg">
                         <span className="font-bold text-slate-100">${getExerciseName(ex.exerciseId)}</span>
-                        <button onClick=${() => removeExercise(idx)} className="w-12 h-12 flex items-center justify-center text-red-500 active:bg-red-500/10 rounded-xl transition-colors">
+                        <button onClick=${() => setExercises(exercises.filter((_, i) => i !== idx))} className="w-12 h-12 flex items-center justify-center text-red-500 active:bg-red-500/10 rounded-xl transition-colors">
                             <${Trash2} size=${20} />
                         </button>
                     </div>
@@ -121,7 +122,7 @@ export const ActiveWorkout = ({ template, allExercises, history, onFinish, onCan
                 <div className="h-24"></div> 
             </main>
 
-            <div className="p-6 bg-slate-900 border-t border-slate-800 shrink-0">
+            <div className="p-6 bg-slate-900 border-t border-slate-800 shrink-0 pb-safe">
                 <button onClick=${() => setIsStarted(true)} className="w-full bg-emerald-600 text-white py-6 rounded-2xl font-black text-2xl shadow-2xl active:scale-95 transition-all">
                     STARTEN
                 </button>
@@ -136,7 +137,10 @@ export const ActiveWorkout = ({ template, allExercises, history, onFinish, onCan
                         </div>
                         <div className="overflow-y-auto p-4 space-y-2">
                             ${allExercises.map(ex => html`
-                                <button key=${ex.id} onClick=${() => addNewExercise(ex.id)} className="w-full text-left p-5 bg-slate-950/50 hover:bg-slate-800 rounded-2xl text-slate-200 active:bg-emerald-600 font-semibold border border-slate-800 transition-colors">
+                                <button key=${ex.id} onClick=${() => {
+                                    setExercises([...exercises, { exerciseId: ex.id, sets: [{ id: generateId(), weight: 0, reps: 0, rir: 0, completed: false }] }]);
+                                    setShowAddExercise(false);
+                                }} className="w-full text-left p-5 bg-slate-950/50 hover:bg-slate-800 rounded-2xl text-slate-200 active:bg-emerald-600 font-semibold border border-slate-800 transition-colors">
                                     ${ex.name}
                                 </button>
                             `)}
@@ -150,7 +154,7 @@ export const ActiveWorkout = ({ template, allExercises, history, onFinish, onCan
 
   return html`
     <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col overflow-hidden">
-      <header className="bg-slate-900 border-b border-slate-800 p-4 h-20 flex justify-between items-center shrink-0">
+      <header className="bg-slate-900 border-b border-slate-800 p-4 h-20 flex justify-between items-center shrink-0 pt-safe shadow-xl">
           <button onClick=${() => setConfirmState('cancel')} className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center active:bg-slate-700 transition-all text-slate-100">
             <${ChevronLeft} size=${28} />
           </button>
@@ -180,21 +184,37 @@ export const ActiveWorkout = ({ template, allExercises, history, onFinish, onCan
                         const prevSet = lastData?.sets[setIndex];
                         return html`
                             <div key=${set.id} className="space-y-1">
-                                ${prevSet && html`
-                                    <div className="flex items-center gap-1 text-[9px] font-black text-blue-500/50 ml-10 uppercase italic">
-                                        <${ArrowUpRight} size=${10} /> Letztes Mal: ${prevSet.weight}kg x ${prevSet.reps} @ ${prevSet.rir || 0} RIR
-                                    </div>
-                                `}
                                 <div className=${`grid grid-cols-12 gap-2 items-center p-3 rounded-2xl transition-all border-2 ${set.completed ? 'bg-emerald-600/10 border-emerald-500/30' : 'bg-slate-950/40 border-slate-800'}`}>
                                     <div className="col-span-1 text-center font-black text-slate-700 text-[10px]">${setIndex + 1}</div>
                                     <div className="col-span-3">
-                                        <input type="number" inputMode="decimal" value=${set.weight || ''} placeholder="kg" onChange=${(e) => updateSet(exIndex, setIndex, 'weight', e.target.value)} className="w-full bg-slate-800 text-center text-white py-4 rounded-xl border border-slate-700 outline-none font-black text-sm" />
+                                        <input 
+                                            type="number" 
+                                            inputMode="decimal" 
+                                            value=${set.weight === 0 ? '' : set.weight} 
+                                            placeholder=${prevSet ? prevSet.weight : 'kg'} 
+                                            onChange=${(e) => updateSet(exIndex, setIndex, 'weight', e.target.value)} 
+                                            className=${`w-full bg-slate-800 text-center py-4 rounded-xl border border-slate-700 outline-none font-black text-sm ${set.weight === 0 ? 'text-slate-500 italic' : 'text-white'}`} 
+                                        />
                                     </div>
                                     <div className="col-span-3">
-                                        <input type="number" inputMode="numeric" value=${set.reps || ''} placeholder="Wdh" onChange=${(e) => updateSet(exIndex, setIndex, 'reps', e.target.value)} className="w-full bg-slate-800 text-center text-white py-4 rounded-xl border border-slate-700 outline-none font-black text-sm" />
+                                        <input 
+                                            type="number" 
+                                            inputMode="numeric" 
+                                            value=${set.reps === 0 ? '' : set.reps} 
+                                            placeholder=${prevSet ? prevSet.reps : 'Wdh'} 
+                                            onChange=${(e) => updateSet(exIndex, setIndex, 'reps', e.target.value)} 
+                                            className=${`w-full bg-slate-800 text-center py-4 rounded-xl border border-slate-700 outline-none font-black text-sm ${set.reps === 0 ? 'text-slate-500 italic' : 'text-white'}`} 
+                                        />
                                     </div>
                                     <div className="col-span-3">
-                                        <input type="number" inputMode="numeric" value=${set.rir || ''} placeholder="RIR" onChange=${(e) => updateSet(exIndex, setIndex, 'rir', e.target.value)} className="w-full bg-slate-800 text-center text-slate-400 py-4 rounded-xl border border-slate-700 outline-none font-bold text-xs" />
+                                        <input 
+                                            type="number" 
+                                            inputMode="numeric" 
+                                            value=${set.rir === 0 && set.completed === false ? '' : set.rir} 
+                                            placeholder=${prevSet ? prevSet.rir : 'RIR'} 
+                                            onChange=${(e) => updateSet(exIndex, setIndex, 'rir', e.target.value)} 
+                                            className=${`w-full bg-slate-800 text-center py-4 rounded-xl border border-slate-700 outline-none font-bold text-xs ${set.rir === 0 && !set.completed ? 'text-slate-600' : 'text-slate-300'}`} 
+                                        />
                                     </div>
                                     <div className="col-span-2">
                                         <button onClick=${() => updateSet(exIndex, setIndex, 'completed', !set.completed)} className=${`w-full h-14 flex items-center justify-center rounded-xl transition-all shadow-lg ${set.completed ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-600'}`}>
@@ -212,7 +232,7 @@ export const ActiveWorkout = ({ template, allExercises, history, onFinish, onCan
         })}
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-950 via-slate-950/90 to-transparent pt-10">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-950 via-slate-950/90 to-transparent pt-10 pb-safe">
           <button onClick=${() => setConfirmState('finish')} className="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black text-xl shadow-2xl active:scale-95 transition-all">
             TRAINING BEENDEN
           </button>
@@ -222,7 +242,7 @@ export const ActiveWorkout = ({ template, allExercises, history, onFinish, onCan
           <div className="fixed inset-0 bg-black/95 backdrop-blur-xl flex items-center justify-center p-8 z-[200]">
               <div className="bg-slate-900 border border-slate-800 p-8 rounded-[40px] w-full max-w-xs text-center shadow-2xl">
                   <div className=${`w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center ${confirmState === 'cancel' ? 'bg-red-500/20 text-red-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
-                      <${confirmState === 'cancel' ? AlertTriangle : Check} size=${40} />
+                      <${confirmState === 'cancel' ? AlertTriangle : Save} size=${40} />
                   </div>
                   <h3 className="text-2xl font-bold text-white mb-3">${confirmState === 'cancel' ? 'Abbrechen?' : 'Speichern?'}</h3>
                   <div className="flex flex-col gap-4">
