@@ -1,15 +1,19 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { CompletedWorkout, Exercise } from '../types';
+import { CompletedWorkout, Exercise } from '../types.ts';
 
 export const analyzeProgress = async (
   history: CompletedWorkout[], 
   exercises: Exercise[]
 ): Promise<string> => {
-  // Fix: Initializing GoogleGenAI with process.env.API_KEY directly as per guidelines
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+  const apiKey = process.env.API_KEY;
   
-  // Prepare a summary of the last 5 workouts for context
+  if (!apiKey) {
+    return "AI-Coach ist in dieser Version nicht konfiguriert. Nutze KraftLog als rein lokalen Tracker.";
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+  
   const recentWorkouts = history.slice(0, 5).map(w => ({
     date: w.date,
     name: w.name,
@@ -22,7 +26,6 @@ export const analyzeProgress = async (
     })
   }));
 
-  // Fix: Move system instruction to config object as per guidelines
   const systemInstruction = `Du bist ein professioneller Powerlifting- und Bodybuilding-Coach.
 Analysiere die Trainingsdaten meines Klienten und gib kurzes, prägnantes Feedback auf Deutsch zu:
 1. Trainingskonsistenz.
@@ -42,7 +45,6 @@ ${JSON.stringify(recentWorkouts)}`;
         systemInstruction,
       }
     });
-    // Fix: Access .text property directly (not a method)
     return response.text || "Konnte keine Analyse erstellen.";
   } catch (error) {
     console.error("Gemini Error:", error);
