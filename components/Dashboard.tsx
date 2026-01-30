@@ -1,6 +1,7 @@
+
 import React, { useRef, useState } from 'react';
 import { CompletedWorkout, WorkoutTemplate } from '../types';
-import { Play, TrendingUp, Download, Upload, ShieldCheck, Smartphone, Info, Github, ChevronRight, Lock } from 'lucide-react';
+import { Play, TrendingUp, Download, Upload, ShieldCheck, Smartphone, Info, ChevronRight, Share, MoreVertical, Globe } from 'lucide-react';
 import { BarChart, Bar, XAxis, ResponsiveContainer, Cell } from 'recharts';
 
 interface DashboardProps {
@@ -32,7 +33,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `kraftlog_backup_${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `kraftlog_backup.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -42,12 +43,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
     <div className="space-y-6 pb-20">
       <header className="mb-6">
         <h1 className="text-4xl font-black text-white mb-2 tracking-tight">KraftLog</h1>
-        <p className="text-slate-400 font-medium italic">Tracking ohne Kompromisse.</p>
+        <p className="text-slate-400 font-medium italic">Privat. Lokal. Schnell.</p>
       </header>
 
       <section>
-        <h2 className="text-lg font-bold text-emerald-400 mb-4 flex items-center gap-2 uppercase tracking-widest">
-          <Play className="w-5 h-5 fill-current" /> Training
+        <h2 className="text-lg font-bold text-emerald-400 mb-4 flex items-center gap-2 uppercase tracking-widest text-xs">
+          <Play className="w-4 h-4 fill-current" /> Training starten
         </h2>
         <div className="grid grid-cols-1 gap-4">
           {templates.map(tpl => (
@@ -68,51 +69,41 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </section>
 
-      {/* Handy Setup Info */}
-      <section className="bg-indigo-950/30 p-6 rounded-[32px] border border-indigo-500/30 shadow-2xl">
-        <button 
-          onClick={() => setShowSetup(!showSetup)}
-          className="w-full flex items-center justify-between text-indigo-400"
-        >
-          <h2 className="text-sm font-black flex items-center gap-2 uppercase tracking-widest">
-            <Smartphone className="w-5 h-5" /> Auf dem Handy nutzen
-          </h2>
+      <section className="bg-indigo-950/30 p-6 rounded-[32px] border border-indigo-500/30">
+        <button onClick={() => setShowSetup(!showSetup)} className="w-full flex items-center justify-between text-indigo-400">
+          <div className="flex items-center gap-3">
+            <Globe className="w-5 h-5" />
+            <h2 className="text-sm font-black uppercase tracking-widest">Handy-App Anleitung</h2>
+          </div>
           <ChevronRight className={`w-5 h-5 transition-transform ${showSetup ? 'rotate-90' : ''}`} />
         </button>
         
         {showSetup && (
-          <div className="mt-4 space-y-4 animate-in slide-in-from-top duration-300">
+          <div className="mt-6 space-y-4 animate-setup">
             <div className="bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
-              <p className="text-xs text-slate-300 mb-4 leading-relaxed">
-                Du brauchst <b>keinen API-Key</b> für das tägliche Training. Um die App als echtes Icon auf dein Handy zu bekommen:
-              </p>
-              <ol className="text-[11px] text-slate-400 space-y-3 list-decimal ml-4">
-                <li>Lade die Dateien auf <b>GitHub</b> hoch (Anleitung findest du online unter "GitHub Pages").</li>
-                <li>Öffne deine GitHub-URL am Handy.</li>
-                <li>Tippe im Browser auf <b>"Zum Home-Bildschirm hinzufügen"</b>.</li>
+              <p className="text-white font-bold text-xs mb-3">Kostenlos & Privat mit Vercel:</p>
+              <ol className="text-xs text-slate-400 space-y-3 list-decimal ml-4">
+                <li>Gehe auf <b>vercel.com</b> und verbinde dein (privates!) GitHub-Repo.</li>
+                <li>Vercel gibt dir eine private HTTPS-URL.</li>
+                <li>Öffne die URL am Handy.</li>
+                <li>Tippe auf <Share className="inline w-3 h-3"/> (iOS) oder <MoreVertical className="inline w-3 h-3"/> (Android) und wähle <b>"Zum Home-Bildschirm"</b>.</li>
               </ol>
-            </div>
-            <div className="flex gap-3 text-[10px] text-amber-300/60 bg-amber-500/5 p-3 rounded-xl border border-amber-500/10">
-              <Lock className="shrink-0 w-4 h-4" />
-              <p>Deine Daten bleiben zu 100% auf deinem Handy (Local Storage). Kein Server sieht dein Training.</p>
             </div>
           </div>
         )}
       </section>
 
       {history.length > 0 && (
-        <section className="bg-slate-900/50 p-6 rounded-[32px] border border-slate-800 shadow-sm">
+        <section className="bg-slate-900/50 p-6 rounded-[32px] border border-slate-800">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-bold text-slate-200 flex items-center gap-2 uppercase tracking-widest">
-              <TrendingUp className="w-5 h-5 text-blue-400" /> Letzte 7 Tage
-            </h2>
-            <button onClick={onNavigateToHistory} className="text-xs text-blue-400 font-bold bg-blue-400/10 px-3 py-1.5 rounded-full">Verlauf</button>
+            <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Aktivität</h2>
+            <button onClick={onNavigateToHistory} className="text-xs text-blue-400 font-bold px-3 py-1.5 bg-blue-400/10 rounded-full">Details</button>
           </div>
-          <div className="h-40 w-full">
+          <div className="h-32 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
-                <XAxis dataKey="name" stroke="#475569" fontSize={10} tickLine={false} axisLine={false} />
-                <Bar dataKey="sets" radius={[4, 4, 0, 0]}>
+                <XAxis dataKey="name" hide />
+                <Bar dataKey="sets">
                    {chartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={index === chartData.length - 1 ? "#10b981" : "#1e293b"} />
                     ))}
@@ -124,22 +115,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
       )}
 
       <section className="bg-slate-900/30 p-6 rounded-[32px] border border-slate-800/50">
-        <h2 className="text-sm font-black text-slate-500 mb-4 flex items-center gap-2 uppercase tracking-widest">
-          <ShieldCheck className="w-5 h-5" /> Backup
+        <h2 className="text-xs font-black text-slate-500 mb-4 flex items-center gap-2 uppercase tracking-widest">
+          <ShieldCheck className="w-4 h-4" /> Daten-Backup
         </h2>
         <div className="grid grid-cols-2 gap-4">
-          <button onClick={handleExport} className="flex flex-col items-center p-4 bg-slate-800/50 rounded-2xl gap-2 active:bg-slate-700 transition-colors border border-slate-700/50">
+          <button onClick={handleExport} className="flex flex-col items-center p-4 bg-slate-800/40 rounded-2xl gap-2 active:bg-slate-700 transition-colors border border-slate-700/50">
             <Download className="w-5 h-5 text-emerald-400" />
-            <span className="text-[10px] font-black text-slate-300 uppercase">Export</span>
+            <span className="text-[10px] font-bold text-slate-400">Export</span>
           </button>
-          <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center p-4 bg-slate-800/50 rounded-2xl gap-2 active:bg-slate-700 transition-colors border border-slate-700/50">
+          <button onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center p-4 bg-slate-800/40 rounded-2xl gap-2 active:bg-slate-700 transition-colors border border-slate-700/50">
             <Upload className="w-5 h-5 text-blue-400" />
-            <span className="text-[10px] font-black text-slate-300 uppercase">Import</span>
+            <span className="text-[10px] font-bold text-slate-400">Import</span>
           </button>
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={(e) => {
+          <input type="file" ref={fileInputRef} onChange={(e) => {
               const file = e.target.files?.[0];
               if (!file) return;
               const reader = new FileReader();
@@ -150,10 +138,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 } catch (err) { console.error(err); }
               };
               reader.readAsText(file);
-            }} 
-            accept=".json" 
-            className="hidden" 
-          />
+          }} accept=".json" className="hidden" />
         </div>
       </section>
     </div>
