@@ -6,7 +6,7 @@ import { Save, Plus, Check, Clock, ChevronLeft, Trash2, X, AlertTriangle, Histor
 const html = htm.bind(React.createElement);
 const generateId = () => Math.random().toString(36).substring(2, 15);
 
-export const ActiveWorkout = ({ template, allExercises, history, onFinish, onCancel }) => {
+export const ActiveWorkout = ({ template, allExercises, history, onFinish, onCancel, onAddExercise }) => {
   const [isStarted, setIsStarted] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [exercises, setExercises] = useState([]);
@@ -37,9 +37,8 @@ export const ActiveWorkout = ({ template, allExercises, history, onFinish, onCan
   };
 
   const getExerciseName = (id) => {
-    const predefined = allExercises.find(e => e.id === id);
-    if (predefined) return predefined.name;
-    return id; 
+    const exercise = allExercises.find(e => e.id === id);
+    return exercise ? exercise.name : id; 
   };
 
   const getLastSessionData = (exerciseId) => {
@@ -95,9 +94,14 @@ export const ActiveWorkout = ({ template, allExercises, history, onFinish, onCan
   };
 
   const handleAddCustomExercise = () => {
-    if (!customExerciseName.trim()) return;
+    const name = customExerciseName.trim();
+    if (!name) return;
+    
+    // Registriere die Übung global in der App, um eine stabile ID zu erhalten
+    const newExId = onAddExercise({ name, category: 'Andere' });
+    
     setExercises([...exercises, { 
-      exerciseId: customExerciseName.trim(), 
+      exerciseId: newExId, 
       sets: [{ id: generateId(), weight: 0, reps: 0, rir: 0, completed: false }] 
     }]);
     setCustomExerciseName('');

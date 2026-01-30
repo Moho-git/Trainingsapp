@@ -99,7 +99,9 @@ const App = () => {
   };
 
   const handleAddExercise = (newEx) => {
-    setExercises(prev => [...prev, { ...newEx, id: 'ex_' + Date.now() }]);
+    const id = newEx.id || 'ex_' + Date.now();
+    setExercises(prev => [...prev, { ...newEx, id }]);
+    return id;
   };
 
   const handleUpdateExercise = (updatedEx) => {
@@ -120,6 +122,7 @@ const App = () => {
         history=${history}
         onFinish=${handleFinishWorkout}
         onCancel=${handleCancelWorkout}
+        onAddExercise=${handleAddExercise}
       />`;
     }
 
