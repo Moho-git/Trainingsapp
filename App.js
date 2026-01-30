@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import htm from 'htm';
-import { LayoutDashboard, History as HistoryIcon, Dumbbell } from 'lucide-react';
+import { LayoutDashboard, History as HistoryIcon, Dumbbell, Scale } from 'lucide-react';
 import { DEFAULT_EXERCISES, DEFAULT_TEMPLATES } from './constants.js';
 
 import { Dashboard } from './components/Dashboard.js';
 import { ActiveWorkout } from './components/ActiveWorkout.js';
 import { History } from './components/History.js';
 import { Exercises } from './components/Exercises.js';
+import { Weight } from './components/Weight.js';
 
 const html = htm.bind(React.createElement);
 
@@ -16,24 +17,31 @@ const BottomNav = ({ activeTab, onTabChange }) => html`
     <div className="flex justify-around items-center h-16 max-w-md mx-auto">
       <button 
         onClick=${() => onTabChange('dashboard')} 
-        className=${`flex flex-col items-center gap-1 p-2 w-1/3 ${activeTab === 'dashboard' ? 'text-emerald-400' : 'text-slate-500'}`}
+        className=${`flex flex-col items-center gap-1 p-2 w-1/4 ${activeTab === 'dashboard' ? 'text-emerald-400' : 'text-slate-500'}`}
       >
-        <${LayoutDashboard} className="w-6 h-6" />
-        <span className="text-[10px] font-bold">Training</span>
+        <${LayoutDashboard} className="w-5 h-5" />
+        <span className="text-[9px] font-bold">Training</span>
       </button>
       <button 
         onClick=${() => onTabChange('exercises')} 
-        className=${`flex flex-col items-center gap-1 p-2 w-1/3 ${activeTab === 'exercises' ? 'text-emerald-400' : 'text-slate-500'}`}
+        className=${`flex flex-col items-center gap-1 p-2 w-1/4 ${activeTab === 'exercises' ? 'text-emerald-400' : 'text-slate-500'}`}
       >
-        <${Dumbbell} className="w-6 h-6" />
-        <span className="text-[10px] font-bold">Übungen</span>
+        <${Dumbbell} className="w-5 h-5" />
+        <span className="text-[9px] font-bold">Übungen</span>
+      </button>
+      <button 
+        onClick=${() => onTabChange('weight')} 
+        className=${`flex flex-col items-center gap-1 p-2 w-1/4 ${activeTab === 'weight' ? 'text-emerald-400' : 'text-slate-500'}`}
+      >
+        <${Scale} className="w-5 h-5" />
+        <span className="text-[9px] font-bold">Gewicht</span>
       </button>
       <button 
         onClick=${() => onTabChange('history')} 
-        className=${`flex flex-col items-center gap-1 p-2 w-1/3 ${activeTab === 'history' ? 'text-emerald-400' : 'text-slate-500'}`}
+        className=${`flex flex-col items-center gap-1 p-2 w-1/4 ${activeTab === 'history' ? 'text-emerald-400' : 'text-slate-500'}`}
       >
-        <${HistoryIcon} className="w-6 h-6" />
-        <span className="text-[10px] font-bold">Verlauf</span>
+        <${HistoryIcon} className="w-5 h-5" />
+        <span className="text-[9px] font-bold">Verlauf</span>
       </button>
     </div>
   </nav>
@@ -48,6 +56,15 @@ const App = () => {
       return saved ? JSON.parse(saved) : DEFAULT_EXERCISES;
     } catch (e) {
       return DEFAULT_EXERCISES;
+    }
+  });
+
+  const [weightLogs, setWeightLogs] = useState(() => {
+    try {
+      const saved = localStorage.getItem('kraftlog_weights');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
     }
   });
 
@@ -70,6 +87,10 @@ const App = () => {
   useEffect(() => {
     localStorage.setItem('kraftlog_exercises', JSON.stringify(exercises));
   }, [exercises]);
+
+  useEffect(() => {
+    localStorage.setItem('kraftlog_weights', JSON.stringify(weightLogs));
+  }, [weightLogs]);
 
   const handleStartWorkout = (templateId) => {
     const template = templates.find(t => t.id === templateId);
@@ -114,6 +135,25 @@ const App = () => {
     }
   };
 
+  const handleAddWeight = (weight, date) => {
+    const newEntry = {
+      id: 'w_' + Date.now(),
+      date: date || new Date().toISOString(),
+      value: parseFloat(weight)
+    };
+    setWeightLogs(prev => [...prev, newEntry].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
+  };
+
+  const handleUpdateWeight = (updated) => {
+    setWeightLogs(prev => prev.map(w => w.id === updated.id ? updated : w));
+  };
+
+  const handleDeleteWeight = (id) => {
+    if (window.confirm("Gewichtseintrag wirklich löschen?")) {
+      setWeightLogs(prev => prev.filter(w => w.id !== id));
+    }
+  };
+
   const renderContent = () => {
     if (activeWorkoutTemplate) {
       return html`<${ActiveWorkout}
@@ -133,6 +173,8 @@ const App = () => {
             <${Dashboard} 
               templates=${templates} 
               history=${history} 
+              weightLogs=${weightLogs}
+              onAddWeight=${handleAddWeight}
               onStartWorkout=${handleStartWorkout} 
               onNavigateToHistory=${() => setActiveTab('history')}
               onImportHistory=${handleImportHistory}
@@ -144,6 +186,14 @@ const App = () => {
               onAdd=${handleAddExercise}
               onUpdate=${handleUpdateExercise}
               onDelete=${handleDeleteExercise}
+            />
+          `}
+          ${activeTab === 'weight' && html`
+            <${Weight} 
+              weightLogs=${weightLogs}
+              onAddWeight=${handleAddWeight}
+              onUpdateWeight=${handleUpdateWeight}
+              onDeleteWeight=${handleDeleteWeight}
             />
           `}
           ${activeTab === 'history' && html`
