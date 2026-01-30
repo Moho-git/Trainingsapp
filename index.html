@@ -17,24 +17,8 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      // Shim für process.env und globale Fehleranzeige
+      // Shim for process.env (Required for some SDKs)
       window.process = { env: { API_KEY: "" } };
-      
-      // Falls die App abstürzt, zeigen wir den Fehler direkt auf dem Screen an
-      window.onerror = function(msg, url, line, col, error) {
-        const root = document.getElementById('root');
-        if (root) {
-          root.innerHTML = `
-            <div style="padding: 20px; color: #f87171; font-family: sans-serif; background: #000; height: 100vh;">
-              <h1 style="font-size: 20px; font-weight: bold;">Ladefehler erkannt:</h1>
-              <p style="font-size: 14px; color: #94a3b8; margin-top: 10px;">${msg}</p>
-              <p style="font-size: 12px; color: #64748b;">Datei: ${url} (Zeile ${line})</p>
-              <button onclick="location.reload()" style="margin-top: 20px; background: #1e293b; color: white; border: none; padding: 10px 20px; border-radius: 8px;">Neu laden</button>
-            </div>
-          `;
-        }
-        return false;
-      };
     </script>
     <style>
       html, body {
@@ -51,16 +35,32 @@
         -webkit-overflow-scrolling: touch;
       }
       
-      .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
-      .pt-safe { padding-top: env(safe-area-inset-top); }
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #334155; 
+        border-radius: 10px;
+      }
+      
+      .pb-safe {
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      .pt-safe {
+        padding-top: env(safe-area-inset-top);
+      }
 
       @keyframes slideDown {
         from { opacity: 0; transform: translateY(-10px); }
         to { opacity: 1; transform: translateY(0); }
       }
-      .animate-setup { animation: slideDown 0.3s ease-out forwards; }
+      .animate-setup {
+        animation: slideDown 0.3s ease-out forwards;
+      }
     </style>
-    
     <script type="importmap">
 {
   "imports": {
@@ -77,12 +77,7 @@
 </script>
   </head>
   <body class="bg-slate-950 text-slate-100 antialiased selection:bg-emerald-500 selection:text-white">
-    <div id="root">
-      <!-- Fallback falls JS gar nicht erst startet -->
-      <div class="flex items-center justify-center h-screen">
-        <div class="animate-pulse text-slate-500 font-bold uppercase tracking-widest text-sm">Initialisiere KraftLog...</div>
-      </div>
-    </div>
+    <div id="root"></div>
     <script type="module" src="index.tsx"></script>
   </body>
 </html>
