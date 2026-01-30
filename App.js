@@ -68,7 +68,15 @@ const App = () => {
     }
   });
 
-  const [templates] = useState(DEFAULT_TEMPLATES);
+  const [templates, setTemplates] = useState(() => {
+    try {
+      const saved = localStorage.getItem('kraftlog_templates');
+      return saved ? JSON.parse(saved) : DEFAULT_TEMPLATES;
+    } catch (e) {
+      return DEFAULT_TEMPLATES;
+    }
+  });
+
   const [history, setHistory] = useState(() => {
     try {
       const saved = localStorage.getItem('kraftlog_history');
@@ -91,6 +99,10 @@ const App = () => {
   useEffect(() => {
     localStorage.setItem('kraftlog_weights', JSON.stringify(weightLogs));
   }, [weightLogs]);
+
+  useEffect(() => {
+    localStorage.setItem('kraftlog_templates', JSON.stringify(templates));
+  }, [templates]);
 
   const handleStartWorkout = (templateId) => {
     const template = templates.find(t => t.id === templateId);
@@ -154,6 +166,25 @@ const App = () => {
     }
   };
 
+  const handleAddTemplate = (name, exerciseIds) => {
+    const newTpl = {
+      id: 'tpl_' + Date.now(),
+      name,
+      exercises: exerciseIds
+    };
+    setTemplates(prev => [...prev, newTpl]);
+  };
+
+  const handleUpdateTemplate = (updatedTpl) => {
+    setTemplates(prev => prev.map(t => t.id === updatedTpl.id ? updatedTpl : t));
+  };
+
+  const handleDeleteTemplate = (id) => {
+    if (window.confirm("Trainingstag wirklich löschen?")) {
+      setTemplates(prev => prev.filter(t => t.id !== id));
+    }
+  };
+
   const renderContent = () => {
     if (activeWorkoutTemplate) {
       return html`<${ActiveWorkout}
@@ -172,10 +203,14 @@ const App = () => {
           ${activeTab === 'dashboard' && html`
             <${Dashboard} 
               templates=${templates} 
+              exercises=${exercises}
               history=${history} 
               weightLogs=${weightLogs}
               onAddWeight=${handleAddWeight}
               onStartWorkout=${handleStartWorkout} 
+              onAddTemplate=${handleAddTemplate}
+              onUpdateTemplate=${handleUpdateTemplate}
+              onDeleteTemplate=${handleDeleteTemplate}
               onNavigateToHistory=${() => setActiveTab('history')}
               onImportHistory=${handleImportHistory}
             />
