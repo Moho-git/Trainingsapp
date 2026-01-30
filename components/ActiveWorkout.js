@@ -11,6 +11,7 @@ export const ActiveWorkout = ({ template, allExercises, history, onFinish, onCan
   const [elapsedTime, setElapsedTime] = useState(0);
   const [exercises, setExercises] = useState([]);
   const [showAddExercise, setShowAddExercise] = useState(false);
+  const [customExerciseName, setCustomExerciseName] = useState('');
   const [confirmState, setConfirmState] = useState('none');
   const timerRef = useRef(null);
 
@@ -35,7 +36,11 @@ export const ActiveWorkout = ({ template, allExercises, history, onFinish, onCan
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const getExerciseName = (id) => allExercises.find(e => e.id === id)?.name || 'Übung';
+  const getExerciseName = (id) => {
+    const predefined = allExercises.find(e => e.id === id);
+    if (predefined) return predefined.name;
+    return id; 
+  };
 
   const getLastSessionData = (exerciseId) => {
     const prevWorkout = history.find(w => w.exercises.some(e => e.exerciseId === exerciseId));
@@ -60,7 +65,6 @@ export const ActiveWorkout = ({ template, allExercises, history, onFinish, onCan
     
     if (field === 'completed') {
         const isCompleting = value;
-        // Smart-Fill: Falls Werte leer sind und wir abhaken, nimm die vom letzten Mal
         if (isCompleting && set.weight === 0 && set.reps === 0) {
             const lastData = getLastSessionData(newExercises[exIndex].exerciseId);
             const prevSet = lastData?.sets[setIndex];
@@ -89,6 +93,18 @@ export const ActiveWorkout = ({ template, allExercises, history, onFinish, onCan
     });
     setExercises(newExercises);
   };
+
+  const handleAddCustomExercise = () => {
+    if (!customExerciseName.trim()) return;
+    setExercises([...exercises, { 
+      exerciseId: customExerciseName.trim(), 
+      sets: [{ id: generateId(), weight: 0, reps: 0, rir: 0, completed: false }] 
+    }]);
+    setCustomExerciseName('');
+    setShowAddExercise(false);
+  };
+
+  const sortedExercises = [...allExercises].sort((a, b) => a.name.localeCompare(b.name));
 
   if (!isStarted) {
     return html`
@@ -130,13 +146,34 @@ export const ActiveWorkout = ({ template, allExercises, history, onFinish, onCan
 
             ${showAddExercise && html`
                 <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[100] flex items-end justify-center">
-                    <div className="bg-slate-900 w-full max-w-md rounded-t-[40px] border-t border-slate-800 flex flex-col max-h-[85vh]">
+                    <div className="bg-slate-900 w-full max-w-md rounded-t-[40px] border-t border-slate-800 flex flex-col max-h-[85vh] overflow-hidden shadow-2xl">
                         <div className="p-6 border-b border-slate-800 flex justify-between items-center shrink-0">
-                            <h3 className="font-bold text-white text-xl">Übung wählen</h3>
+                            <h3 className="font-bold text-white text-xl">Übung hinzufügen</h3>
                             <button onClick=${() => setShowAddExercise(false)} className="w-10 h-10 flex items-center justify-center bg-slate-800 rounded-full text-slate-300"><${X} /></button>
                         </div>
-                        <div className="overflow-y-auto p-4 space-y-2">
-                            ${allExercises.map(ex => html`
+                        
+                        <div className="p-4 border-b border-slate-800 shrink-0 bg-slate-950/30">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Eigene Übung erstellen</p>
+                            <div className="flex gap-2">
+                                <input 
+                                    type="text" 
+                                    value=${customExerciseName} 
+                                    onChange=${(e) => setCustomExerciseName(e.target.value)}
+                                    placeholder="Name der Übung..." 
+                                    className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-emerald-500 transition-colors"
+                                />
+                                <button 
+                                    onClick=${handleAddCustomExercise}
+                                    className="bg-emerald-600 text-white px-4 rounded-xl font-bold active:bg-emerald-500"
+                                >
+                                    <${Plus} />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="overflow-y-auto p-4 space-y-2 flex-1 scroll-smooth">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 ml-1">Oder aus Liste wählen</p>
+                            ${sortedExercises.map(ex => html`
                                 <button key=${ex.id} onClick=${() => {
                                     setExercises([...exercises, { exerciseId: ex.id, sets: [{ id: generateId(), weight: 0, reps: 0, rir: 0, completed: false }] }]);
                                     setShowAddExercise(false);
