@@ -17,8 +17,37 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      // Shim for process.env (Required for some SDKs)
+      // Shim für process.env
       window.process = { env: { API_KEY: "" } };
+      
+      // Fehler-Diagnose System
+      function showError(msg, details) {
+        const root = document.getElementById('root');
+        if (root) {
+          root.innerHTML = `
+            <div style="padding: 40px 20px; color: #f87171; font-family: -apple-system, sans-serif; background: #020617; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+              <div style="background: rgba(248, 113, 113, 0.1); padding: 20px; border-radius: 20px; border: 1px solid rgba(248, 113, 113, 0.2); max-width: 400px;">
+                <h1 style="font-size: 24px; font-weight: 900; margin-bottom: 10px; color: white;">Startfehler</h1>
+                <p style="font-size: 14px; color: #94a3b8; line-height: 1.5;">${msg}</p>
+                ${details ? `<pre style="font-size: 10px; color: #64748b; margin-top: 20px; background: #000; padding: 10px; border-radius: 10px; overflow-x: auto; text-align: left;">${details}</pre>` : ''}
+                <button onclick="location.reload()" style="margin-top: 24px; background: #10b981; color: white; border: none; padding: 12px 24px; border-radius: 14px; font-weight: bold; cursor: pointer; width: 100%;">Erneut versuchen</button>
+              </div>
+              <p style="margin-top: 20px; font-size: 12px; color: #475569;">Hinweis: Prüfe, ob alle Dateien im GitHub Repo vorhanden sind.</p>
+            </div>
+          `;
+        }
+      }
+
+      window.onerror = (msg, url, line, col, error) => {
+        showError("Anwendungsfehler erkannt", `${msg}\nDatei: ${url}\nZeile: ${line}`);
+        return false;
+      };
+
+      window.addEventListener('error', (event) => {
+        if (event.target.tagName === 'SCRIPT' || event.target.tagName === 'LINK') {
+          showError("Datei konnte nicht geladen werden", `Die Ressource unter ${event.target.src || event.target.href} wurde blockiert oder nicht gefunden.`);
+        }
+      }, true);
     </script>
     <style>
       html, body {
@@ -29,38 +58,13 @@
         padding: 0;
         -webkit-tap-highlight-color: transparent;
       }
-      #root {
-        height: 100%;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-      }
-      
-      ::-webkit-scrollbar {
-        width: 6px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent; 
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #334155; 
-        border-radius: 10px;
-      }
-      
-      .pb-safe {
-        padding-bottom: env(safe-area-inset-bottom);
-      }
-      .pt-safe {
-        padding-top: env(safe-area-inset-top);
-      }
-
-      @keyframes slideDown {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      .animate-setup {
-        animation: slideDown 0.3s ease-out forwards;
-      }
+      #root { height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+      .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+      .pt-safe { padding-top: env(safe-area-inset-top); }
+      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+      .animate-loading { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
     </style>
+    
     <script type="importmap">
 {
   "imports": {
@@ -77,7 +81,12 @@
 </script>
   </head>
   <body class="bg-slate-950 text-slate-100 antialiased selection:bg-emerald-500 selection:text-white">
-    <div id="root"></div>
+    <div id="root">
+      <div class="flex flex-col items-center justify-center h-screen space-y-4">
+        <div class="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
+        <div class="animate-loading text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px]">Initialisiere KraftLog...</div>
+      </div>
+    </div>
     <script type="module" src="index.tsx"></script>
   </body>
 </html>

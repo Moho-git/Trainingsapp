@@ -33,20 +33,21 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [exercises] = useState<Exercise[]>(DEFAULT_EXERCISES);
   const [templates] = useState<WorkoutTemplate[]>(DEFAULT_TEMPLATES);
-  const [history, setHistory] = useState<CompletedWorkout[]>([]);
+  
+  // Initialisiere History direkt aus dem LocalStorage, um Flackern zu vermeiden
+  const [history, setHistory] = useState<CompletedWorkout[]>(() => {
+    try {
+      const saved = localStorage.getItem('kraftlog_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Failed to parse initial history", e);
+      return [];
+    }
+  });
+
   const [activeWorkoutTemplate, setActiveWorkoutTemplate] = useState<WorkoutTemplate | null>(null);
 
-  useEffect(() => {
-    const savedHistory = localStorage.getItem('kraftlog_history');
-    if (savedHistory) {
-      try {
-        setHistory(JSON.parse(savedHistory));
-      } catch (e) {
-        console.error("Failed to parse history", e);
-      }
-    }
-  }, []);
-
+  // Speicher-Sync Effekt
   useEffect(() => {
     localStorage.setItem('kraftlog_history', JSON.stringify(history));
   }, [history]);
@@ -65,7 +66,7 @@ const App: React.FC = () => {
   const handleCancelWorkout = () => setActiveWorkoutTemplate(null);
 
   const handleDeleteWorkout = (id: string) => {
-    if (window.confirm("Training löschen?")) {
+    if (window.confirm("Training unwiderruflich löschen?")) {
       setHistory(prev => prev.filter(w => w.id !== id));
     }
   };
@@ -74,7 +75,8 @@ const App: React.FC = () => {
     setHistory(prev => {
         const existingIds = new Set(prev.map(w => w.id));
         const newWorkouts = importedHistory.filter(w => !existingIds.has(w.id));
-        return [...newWorkouts, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const combined = [...newWorkouts, ...prev];
+        return combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     });
   };
 
