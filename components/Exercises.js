@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import htm from 'htm';
 import { Plus, Edit2, Trash2, Check, X, Search, TrendingUp, Calendar, Target, Activity, ListFilter, Award, Zap } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Bar } from 'recharts';
@@ -9,6 +9,13 @@ const html = htm.bind(React.createElement);
 const CATEGORIES = ['Brust', 'Rücken', 'Beine', 'Arme', 'Bauch', 'Schultern'];
 
 const ExerciseDetail = ({ exercise, history, onClose }) => {
+  // Listen for popstate to close detail view via back button
+  useEffect(() => {
+    const handleBack = () => onClose();
+    window.addEventListener('popstate', handleBack);
+    return () => window.removeEventListener('popstate', handleBack);
+  }, [onClose]);
+
   const exerciseHistory = useMemo(() => {
     const data = [];
     history.forEach(workout => {
@@ -100,7 +107,7 @@ const ExerciseDetail = ({ exercise, history, onClose }) => {
           <h2 className="text-xl font-black text-white truncate max-w-[200px]">${exercise.name}</h2>
           <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">${exercise.category}</span>
         </div>
-        <button onClick=${onClose} className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center text-slate-300 active:scale-95 transition-all">
+        <button onClick=${() => { window.history.back(); }} className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center text-slate-300 active:scale-95 transition-all">
           <${X} size=${24} />
         </button>
       </header>
@@ -346,7 +353,10 @@ export const Exercises = ({ exercises, history, onAdd, onUpdate, onDelete }) => 
               ${grouped[category].map(ex => html`
                 <div 
                   key=${ex.id} 
-                  onClick=${() => setSelectedExForDetail(ex)}
+                  onClick=${() => {
+                    setSelectedExForDetail(ex);
+                    window.history.pushState({ view: 'exercise-detail' }, '');
+                  }}
                   className="bg-slate-900 border border-slate-800 rounded-[28px] p-5 flex items-center justify-between group active:scale-[0.98] transition-all cursor-pointer shadow-lg"
                 >
                   ${editingId === ex.id ? html`

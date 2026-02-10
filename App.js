@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import htm from 'htm';
-import { LayoutDashboard, History as HistoryIcon, Dumbbell, Scale, LogOut, AlertTriangle, Play, Activity } from 'lucide-react';
+import { LayoutDashboard, History as HistoryIcon, Dumbbell, Scale, LogOut, AlertTriangle, Play, Activity, X } from 'lucide-react';
 import { DEFAULT_EXERCISES, DEFAULT_TEMPLATES } from './constants.js';
 
 import { Dashboard } from './components/Dashboard.js';
@@ -54,6 +54,47 @@ const App = () => {
 
   const [viewingSession, setViewingSession] = useState(null);
   const [workoutToEdit, setWorkoutToEdit] = useState(null);
+
+  // Initialize history state on mount
+  useEffect(() => {
+    window.history.replaceState({ tab: 'dashboard' }, '');
+  }, []);
+
+  // Sync tabs with history
+  useEffect(() => {
+    if (!isViewingActiveWorkout && !workoutToEdit) {
+      window.history.pushState({ tab: activeTab }, '');
+    }
+  }, [activeTab]);
+
+  // Global Back Button Handler
+  useEffect(() => {
+    const handlePopState = (event) => {
+      // If we are currently in a workout or editing, close it
+      if (isViewingActiveWorkout || workoutToEdit) {
+        setIsViewingActiveWorkout(false);
+        setViewingSession(null);
+        setWorkoutToEdit(null);
+        return;
+      }
+
+      // If we are in a sub-tab, go back to dashboard
+      if (activeTab !== 'dashboard') {
+        setActiveTab('dashboard');
+        return;
+      }
+
+      // If on dashboard, show exit confirmation
+      if (activeTab === 'dashboard') {
+        setShowExitConfirm(true);
+        // Push state again so the next "back" can be caught again or actually close the app
+        window.history.pushState({ tab: 'dashboard' }, '');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [activeTab, isViewingActiveWorkout, workoutToEdit]);
 
   // Persistence Effects
   useEffect(() => { localStorage.setItem('kraftlog_history', JSON.stringify(history)); }, [history]);
@@ -136,11 +177,17 @@ const App = () => {
           setViewingSession({ ...session, isStarted: true });
         }}
         onFinish=${handleFinishWorkout}
-        onCancel=${() => { setIsViewingActiveWorkout(false); setViewingSession(null); setWorkoutToEdit(null); }}
+        onCancel=${() => { 
+          setIsViewingActiveWorkout(false); 
+          setViewingSession(null); 
+          setWorkoutToEdit(null); 
+          window.history.back();
+        }}
         onAbortWorkout=${() => { 
           setActiveWorkoutSession(null);
           setViewingSession(null);
           setIsViewingActiveWorkout(false); 
+          window.history.back();
         }}
         onAddExercise=${(newEx) => {
           const id = 'ex_' + Date.now();
@@ -164,6 +211,7 @@ const App = () => {
               onContinueWorkout=${() => {
                 setViewingSession(activeWorkoutSession);
                 setIsViewingActiveWorkout(true);
+                window.history.pushState({ page: 'workout' }, '');
               }}
               onAbortActiveSession=${abortActiveSession}
               onAddWeight=${(w, d) => setWeightLogs(prev => [...prev, { id: 'w_'+Date.now()+'_'+Math.random(), date: d || new Date().toISOString(), value: parseFloat(w) }].sort((a,b) => new Date(a.date)-new Date(b.date)))}
@@ -224,6 +272,23 @@ const App = () => {
             </button>
           </div>
         </nav>
+
+        <!-- Exit Confirmation Dialog -->
+        ${showExitConfirm && html`
+          <div className="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200">
+            <div className="bg-slate-900 border border-slate-800 rounded-[32px] p-8 w-full max-w-xs text-center shadow-2xl">
+              <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <${LogOut} size=${32} />
+              </div>
+              <h3 className="text-xl font-black text-white mb-2 uppercase tracking-tighter">App beenden?</h3>
+              <p className="text-slate-500 text-xs mb-8 leading-relaxed">Möchtest du KraftLog wirklich verlassen?</p>
+              <div className="flex flex-col gap-3">
+                <button onClick=${() => window.close()} className="w-full py-4 bg-red-600 text-white rounded-2xl font-black shadow-lg active:scale-95 transition-all">JA, BEENDEN</button>
+                <button onClick=${() => setShowExitConfirm(false)} className="w-full py-4 bg-slate-800 text-slate-400 rounded-2xl font-black active:scale-95 transition-all">WEITER TRACKEN</button>
+              </div>
+            </div>
+          </div>
+        `}
       </div>
     `;
   };
