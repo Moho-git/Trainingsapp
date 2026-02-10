@@ -87,6 +87,7 @@ const App = () => {
   });
 
   const [activeWorkoutTemplate, setActiveWorkoutTemplate] = useState(null);
+  const [workoutToEdit, setWorkoutToEdit] = useState(null);
 
   useEffect(() => {
     localStorage.setItem('kraftlog_history', JSON.stringify(history));
@@ -110,12 +111,20 @@ const App = () => {
   };
 
   const handleFinishWorkout = (workout) => {
-    setHistory(prev => [workout, ...prev]);
-    setActiveWorkoutTemplate(null);
+    if (workoutToEdit) {
+      setHistory(prev => prev.map(w => w.id === workoutToEdit.id ? { ...workout, id: workoutToEdit.id, date: workoutToEdit.date } : w));
+      setWorkoutToEdit(null);
+    } else {
+      setHistory(prev => [workout, ...prev]);
+      setActiveWorkoutTemplate(null);
+    }
     setActiveTab('history');
   };
 
-  const handleCancelWorkout = () => setActiveWorkoutTemplate(null);
+  const handleCancelWorkout = () => {
+    setActiveWorkoutTemplate(null);
+    setWorkoutToEdit(null);
+  };
 
   const handleDeleteWorkout = (id) => {
     if (window.confirm("Training unwiderruflich löschen?")) {
@@ -123,12 +132,33 @@ const App = () => {
     }
   };
 
-  const handleImportHistory = (importedHistory) => {
-    setHistory(prev => {
+  const handleEditWorkout = (workout) => {
+    setWorkoutToEdit(workout);
+  };
+
+  const handleImportBackup = (backup) => {
+    if (backup.history) {
+      setHistory(prev => {
         const existingIds = new Set(prev.map(w => w.id));
-        const newWorkouts = importedHistory.filter(w => !existingIds.has(w.id));
-        return [...newWorkouts, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    });
+        const newOnes = backup.history.filter(w => !existingIds.has(w.id));
+        return [...newOnes, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      });
+    }
+    if (backup.exercises) {
+      setExercises(prev => {
+        const existingIds = new Set(prev.map(ex => ex.id));
+        const newOnes = backup.exercises.filter(ex => !existingIds.has(ex.id));
+        return [...prev, ...newOnes];
+      });
+    }
+    if (backup.templates) {
+      setTemplates(prev => {
+        const existingIds = new Set(prev.map(t => t.id));
+        const newOnes = backup.templates.filter(t => !existingIds.has(t.id));
+        return [...prev, ...newOnes];
+      });
+    }
+    alert("Backup erfolgreich importiert!");
   };
 
   const handleAddExercise = (newEx) => {
@@ -186,14 +216,16 @@ const App = () => {
   };
 
   const renderContent = () => {
-    if (activeWorkoutTemplate) {
+    if (activeWorkoutTemplate || workoutToEdit) {
       return html`<${ActiveWorkout}
-        template=${activeWorkoutTemplate}
+        template=${activeWorkoutTemplate || { id: workoutToEdit.templateId, name: workoutToEdit.name, exercises: workoutToEdit.exercises.map(e => e.exerciseId) }}
+        editingWorkout=${workoutToEdit}
         allExercises=${exercises}
         history=${history}
         onFinish=${handleFinishWorkout}
         onCancel=${handleCancelWorkout}
         onAddExercise=${handleAddExercise}
+        onUpdateTemplate=${handleUpdateTemplate}
       />`;
     }
 
@@ -212,7 +244,7 @@ const App = () => {
               onUpdateTemplate=${handleUpdateTemplate}
               onDeleteTemplate=${handleDeleteTemplate}
               onNavigateToHistory=${() => setActiveTab('history')}
-              onImportHistory=${handleImportHistory}
+              onImportBackup=${handleImportBackup}
             />
           `}
           ${activeTab === 'exercises' && html`
@@ -236,6 +268,7 @@ const App = () => {
               history=${history} 
               exercises=${exercises}
               onDeleteWorkout=${handleDeleteWorkout}
+              onEditWorkout=${handleEditWorkout}
             />
           `}
         </div>

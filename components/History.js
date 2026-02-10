@@ -1,11 +1,11 @@
 
 import React, { useState } from 'react';
 import htm from 'htm';
-import { Trash2, ChevronLeft, Calendar, Clock, Dumbbell, ArrowRight } from 'lucide-react';
+import { Trash2, ChevronLeft, Calendar, Clock, Dumbbell, ArrowRight, Edit2 } from 'lucide-react';
 
 const html = htm.bind(React.createElement);
 
-export const History = ({ history, exercises, onDeleteWorkout }) => {
+export const History = ({ history, exercises, onDeleteWorkout, onEditWorkout }) => {
   const [selectedWorkout, setSelectedWorkout] = useState(null);
   const sortedHistory = [...history].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -19,14 +19,22 @@ export const History = ({ history, exercises, onDeleteWorkout }) => {
             <${ChevronLeft} /> Zurück
           </button>
           <h2 className="font-bold text-white">Details</h2>
-          <button onClick=${() => {
-            if (window.confirm("Dieses Training aus dem Verlauf löschen?")) {
-              onDeleteWorkout(selectedWorkout.id);
+          <div className="flex gap-2">
+            <button onClick=${() => {
+              onEditWorkout(selectedWorkout);
               setSelectedWorkout(null);
-            }
-          }} className="w-12 h-12 flex items-center justify-center text-red-500 bg-red-500/10 rounded-xl active:bg-red-500/20">
-            <${Trash2} size=${20} />
-          </button>
+            }} className="w-12 h-12 flex items-center justify-center text-blue-400 bg-blue-500/10 rounded-xl active:bg-blue-500/20">
+              <${Edit2} size=${20} />
+            </button>
+            <button onClick=${() => {
+              if (window.confirm("Dieses Training aus dem Verlauf löschen?")) {
+                onDeleteWorkout(selectedWorkout.id);
+                setSelectedWorkout(null);
+              }
+            }} className="w-12 h-12 flex items-center justify-center text-red-500 bg-red-500/10 rounded-xl active:bg-red-500/20">
+              <${Trash2} size=${20} />
+            </button>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 space-y-6 pb-10">

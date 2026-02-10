@@ -1,7 +1,7 @@
 
 import React, { useRef, useState } from 'react';
 import htm from 'htm';
-import { Play, Download, Upload, ShieldCheck, Scale, Plus, Settings, Trash2, Edit2, X, Check } from 'lucide-react';
+import { Play, Download, Upload, ShieldCheck, Scale, Plus, Settings, Trash2, Edit2, X, Check, ChevronUp, ChevronDown } from 'lucide-react';
 
 const html = htm.bind(React.createElement);
 
@@ -14,7 +14,7 @@ export const Dashboard = ({
   onAddTemplate,
   onUpdateTemplate,
   onDeleteTemplate,
-  onImportHistory 
+  onImportBackup 
 }) => {
   const fileInputRef = useRef(null);
   const [weightInput, setWeightInput] = useState('');
@@ -30,13 +30,17 @@ export const Dashboard = ({
   };
 
   const handleExport = () => {
-    const backupData = { history };
+    const backupData = { 
+      history, 
+      templates, 
+      exercises 
+    };
     const dataStr = JSON.stringify(backupData, null, 2);
     const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `kraftlog_backup.json`;
+    link.download = `kraftlog_full_backup_${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -65,6 +69,14 @@ export const Dashboard = ({
     }
   };
 
+  const moveExercise = (index, direction) => {
+    const newExercises = [...editingTemplate.exercises];
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= newExercises.length) return;
+    [newExercises[index], newExercises[targetIndex]] = [newExercises[targetIndex], newExercises[index]];
+    setEditingTemplate({ ...editingTemplate, exercises: newExercises });
+  };
+
   return html`
     <div className="space-y-6 pb-24">
       <header className="mb-6">
@@ -90,7 +102,7 @@ export const Dashboard = ({
             <div key=${tpl.id} className="relative group">
               <button
                 onClick=${() => !isEditingTemplates && onStartWorkout(tpl.id)}
-                className=${`w-full bg-slate-900 p-6 rounded-[28px] text-left border border-slate-800 transition-all flex justify-between items-center shadow-lg ${isEditingTemplates ? 'cursor-default' : 'active:bg-slate-800 active:scale-[0.98]'}`}
+                className=${`w-full bg-slate-900 p-6 rounded-[28px] text-left border border-slate-800 transition-all flex justify-between items-center shadow-lg ${isEditingTemplates ? 'cursor-default opacity-50' : 'active:bg-slate-800 active:scale-[0.98]'}`}
               >
                 <div>
                   <h3 className="font-bold text-xl text-slate-100">${tpl.name}</h3>
@@ -136,47 +148,72 @@ export const Dashboard = ({
       <!-- Template Editor Modal -->
       ${editingTemplate && html`
         <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-end justify-center">
-          <div className="bg-slate-900 w-full max-w-md rounded-t-[40px] border-t border-slate-800 flex flex-col max-h-[90vh] overflow-hidden shadow-2xl">
-            <div className="p-6 border-b border-slate-800 flex justify-between items-center shrink-0">
-              <h3 className="font-bold text-white text-xl">${editingTemplate.id ? 'Tag bearbeiten' : 'Neuer Tag'}</h3>
-              <button onClick=${() => setEditingTemplate(null)} className="w-10 h-10 flex items-center justify-center bg-slate-800 rounded-full text-slate-300"><${X} /></button>
+          <div className="bg-slate-900 w-full max-w-md rounded-t-[32px] border-t border-slate-800 flex flex-col max-h-[95vh] overflow-hidden shadow-2xl">
+            <div className="p-4 border-b border-slate-800 flex justify-between items-center shrink-0">
+              <h3 className="font-bold text-white text-lg">${editingTemplate.id ? 'Tag bearbeiten' : 'Neuer Tag'}</h3>
+              <button onClick=${() => setEditingTemplate(null)} className="w-8 h-8 flex items-center justify-center bg-slate-800 rounded-full text-slate-300"><${X} size=${18} /></button>
             </div>
             
-            <div className="p-6 space-y-4 flex-1 overflow-y-auto">
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Name des Trainingstages</label>
+            <div className="p-4 space-y-3 flex-1 overflow-y-auto pb-24">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Name</label>
                 <input 
                   type="text"
                   value=${editingTemplate.name}
                   onChange=${(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
                   placeholder="z.B. Oberkörper"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-4 text-white outline-none focus:border-emerald-500 transition-all font-bold"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-emerald-500 transition-all font-bold text-sm"
                 />
               </div>
 
-              <div className="space-y-3">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Übungen auswählen</label>
-                <div className="space-y-2">
-                  ${exercises.map(ex => html`
-                    <button 
-                      key=${ex.id}
-                      onClick=${() => toggleExerciseInTemplate(ex.id)}
-                      className=${`w-full p-4 rounded-2xl border text-left transition-all flex justify-between items-center ${editingTemplate.exercises.includes(ex.id) ? 'bg-emerald-600/10 border-emerald-500 text-white' : 'bg-slate-950/50 border-slate-800 text-slate-400'}`}
-                    >
-                      <span className="font-bold text-sm">${ex.name}</span>
-                      ${editingTemplate.exercises.includes(ex.id) && html`<${Check} size=${16} className="text-emerald-500" />`}
-                    </button>
-                  `)}
+              <!-- Reorder-Liste der bereits gewählten Übungen -->
+              ${editingTemplate.exercises.length > 0 && html`
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest ml-1">Reihenfolge</label>
+                  <div className="space-y-1">
+                    ${editingTemplate.exercises.map((exId, idx) => {
+                      const ex = exercises.find(e => e.id === exId);
+                      return html`
+                        <div key=${exId} className="flex items-center gap-2 bg-slate-800/40 p-2 rounded-xl border border-slate-700/50">
+                          <span className="flex-1 font-bold text-xs text-slate-200 truncate">${ex?.name || 'Unbekannt'}</span>
+                          <div className="flex gap-0.5">
+                            <button onClick=${() => moveExercise(idx, -1)} className="p-1.5 text-slate-400 disabled:opacity-20" disabled=${idx === 0}><${ChevronUp} size=${14}/></button>
+                            <button onClick=${() => moveExercise(idx, 1)} className="p-1.5 text-slate-400 disabled:opacity-20" disabled=${idx === editingTemplate.exercises.length - 1}><${ChevronDown} size=${14}/></button>
+                            <button onClick=${() => toggleExerciseInTemplate(exId)} className="p-1.5 text-red-400/60"><${Trash2} size=${14}/></button>
+                          </div>
+                        </div>
+                      `;
+                    })}
+                  </div>
+                </div>
+              `}
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Übungen wählen</label>
+                <div className="grid grid-cols-1 gap-1.5">
+                  ${exercises.map(ex => {
+                    const isSelected = editingTemplate.exercises.includes(ex.id);
+                    return html`
+                      <button 
+                        key=${ex.id}
+                        onClick=${() => toggleExerciseInTemplate(ex.id)}
+                        className=${`w-full p-3 rounded-xl border text-left transition-all flex justify-between items-center ${isSelected ? 'bg-emerald-600/10 border-emerald-500 text-white' : 'bg-slate-950/50 border-slate-800 text-slate-400'}`}
+                      >
+                        <span className="font-bold text-xs">${ex.name}</span>
+                        ${isSelected && html`<${Check} size=${14} className="text-emerald-500" />`}
+                      </button>
+                    `;
+                  })}
                 </div>
               </div>
             </div>
 
-            <div className="p-6 bg-slate-900 border-t border-slate-800 shrink-0">
+            <div className="p-4 bg-slate-900 border-t border-slate-800 shrink-0">
               <button 
                 onClick=${saveTemplate}
-                className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black shadow-lg active:scale-95 transition-all"
+                className="w-full bg-emerald-600 text-white py-3.5 rounded-xl font-black shadow-lg active:scale-95 transition-all text-sm"
               >
-                Speichern
+                Plan speichern
               </button>
             </div>
           </div>
@@ -236,8 +273,15 @@ export const Dashboard = ({
               reader.onload = (ev) => {
                 try {
                   const parsed = JSON.parse(ev.target?.result);
-                  if (parsed.history) onImportHistory(parsed.history);
-                } catch (err) {}
+                  // Kompatibilität mit altem Format (nur history) und neuem Backup-Format
+                  if (Array.isArray(parsed)) {
+                    onImportBackup({ history: parsed });
+                  } else if (parsed.history || parsed.exercises || parsed.templates) {
+                    onImportBackup(parsed);
+                  }
+                } catch (err) {
+                  console.error("Fehler beim Backup-Import", err);
+                }
               };
               reader.readAsText(file);
           }} accept=".json" className="hidden" />
