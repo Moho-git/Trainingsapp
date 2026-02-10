@@ -173,7 +173,6 @@ const App = () => {
               onDeleteTemplate=${(id) => { if(confirm("Löschen?")) setTemplates(prev => prev.filter(t => t.id !== id)) }}
               onImportBackup=${(backup) => {
                  if (backup.history) setHistory(prev => [...backup.history, ...prev.filter(w => !backup.history.find(bh => bh.id === w.id))]);
-                 // ... other imports
                  alert("Import erfolgreich");
               }}
             />
@@ -181,6 +180,7 @@ const App = () => {
           ${activeTab === 'exercises' && html`
             <${Exercises} 
               exercises=${exercises}
+              history=${history}
               onAdd=${(ex) => setExercises(prev => [...prev, {...ex, id: 'ex_'+Date.now()}])}
               onUpdate=${(ex) => setExercises(prev => prev.map(old => old.id === ex.id ? ex : old))}
               onDelete=${(id) => { if(confirm("Löschen?")) setExercises(prev => prev.filter(ex => ex.id !== id)) }}
