@@ -9,6 +9,7 @@ export const Dashboard = ({
   templates, 
   exercises,
   history, 
+  weightLogs,
   onAddWeight, 
   onStartWorkout, 
   onAddTemplate,
@@ -33,7 +34,8 @@ export const Dashboard = ({
     const backupData = { 
       history, 
       templates, 
-      exercises 
+      exercises,
+      weightLogs 
     };
     const dataStr = JSON.stringify(backupData, null, 2);
     const blob = new Blob([dataStr], { type: "application/json" });
@@ -276,7 +278,7 @@ export const Dashboard = ({
                   // Kompatibilität mit altem Format (nur history) und neuem Backup-Format
                   if (Array.isArray(parsed)) {
                     onImportBackup({ history: parsed });
-                  } else if (parsed.history || parsed.exercises || parsed.templates) {
+                  } else if (parsed.history || parsed.exercises || parsed.templates || parsed.weightLogs) {
                     onImportBackup(parsed);
                   }
                 } catch (err) {

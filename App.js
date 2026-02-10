@@ -158,6 +158,13 @@ const App = () => {
         return [...prev, ...newOnes];
       });
     }
+    if (backup.weightLogs) {
+      setWeightLogs(prev => {
+        const existingIds = new Set(prev.map(w => w.id));
+        const newOnes = backup.weightLogs.filter(w => !existingIds.has(w.id));
+        return [...prev, ...newOnes].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      });
+    }
     alert("Backup erfolgreich importiert!");
   };
 
