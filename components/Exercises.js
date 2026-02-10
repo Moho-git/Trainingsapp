@@ -1,14 +1,16 @@
 
 import React, { useState, useMemo } from 'react';
 import htm from 'htm';
-import { Plus, Edit2, Trash2, Check, X, Search, ChevronRight, TrendingUp, Calendar, Target, Activity, ArrowUpRight } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
+import { Plus, Edit2, Trash2, Check, X, Search, ChevronRight, TrendingUp, Calendar, Target, Activity, ArrowUpRight, BarChart3, ListFilter } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Bar, Line } from 'recharts';
 
 const html = htm.bind(React.createElement);
 
 const CATEGORIES = ['Brust', 'Rücken', 'Beine', 'Arme', 'Bauch', 'Schultern'];
 
 const ExerciseDetail = ({ exercise, history, onClose }) => {
+  const [activeMetric, setActiveMetric] = useState('peak'); // 'peak' or 'volume'
+
   const exerciseHistory = useMemo(() => {
     const data = [];
     history.forEach(workout => {
@@ -33,34 +35,61 @@ const ExerciseDetail = ({ exercise, history, onClose }) => {
 
   const stats = useMemo(() => {
     if (exerciseHistory.length === 0) return null;
-    const maxWeight = Math.max(...exerciseHistory.map(h => h.weight));
-    const totalVolume = exerciseHistory.reduce((acc, h) => acc + h.volume, 0);
-    const bestSet = exerciseHistory.reduce((prev, curr) => (curr.weight > prev.weight) ? curr : prev, exerciseHistory[0]);
-    const est1RM = bestSet.weight * (1 + (bestSet.reps / 30));
     
-    // Group by date for chart
+    // Group by date to find peak performance per session
     const dailyData = [];
-    const grouped = exerciseHistory.reduce((acc, h) => {
+    const groupedByDate = exerciseHistory.reduce((acc, h) => {
       if (!acc[h.date]) acc[h.date] = [];
       acc[h.date].push(h);
       return acc;
     }, {});
 
-    Object.keys(grouped).forEach(date => {
-      const daySets = grouped[date];
+    Object.keys(groupedByDate).forEach(date => {
+      const daySets = groupedByDate[date];
+      
+      // Find the "Peak Set": Highest weight, then most reps
+      const peakSet = daySets.reduce((prev, curr) => {
+        if (curr.weight > prev.weight) return curr;
+        if (curr.weight === prev.weight && curr.reps > prev.reps) return curr;
+        return prev;
+      }, daySets[0]);
+
       dailyData.push({
         date,
         formattedDate: new Date(date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),
-        avgWeight: daySets.reduce((a, b) => a + b.weight, 0) / daySets.length,
-        maxWeight: Math.max(...daySets.map(s => s.weight)),
-        maxReps: Math.max(...daySets.map(s => s.reps)),
-        avgRIR: daySets.reduce((a, b) => a + (b.rir || 0), 0) / daySets.length,
-        totalVolume: daySets.reduce((a, b) => a + b.volume, 0)
+        peakWeight: peakSet.weight,
+        peakReps: peakSet.reps,
+        totalVolume: daySets.reduce((a, b) => a + b.volume, 0),
+        avgRIR: daySets.reduce((a, b) => a + (b.rir || 0), 0) / daySets.length
       });
     });
 
-    return { maxWeight, totalVolume, est1RM: est1RM.toFixed(1), dailyData: dailyData.sort((a,b) => new Date(a.date) - new Date(b.date)) };
+    const maxWeight = Math.max(...exerciseHistory.map(h => h.weight));
+    const bestSet = exerciseHistory.reduce((prev, curr) => (curr.weight > prev.weight) ? curr : prev, exerciseHistory[0]);
+    const est1RM = bestSet.weight * (1 + (bestSet.reps / 30));
+
+    return { 
+      maxWeight, 
+      est1RM: est1RM.toFixed(1), 
+      dailyData: dailyData.sort((a,b) => new Date(a.date) - new Date(b.date)),
+      groupedByDate
+    };
   }, [exerciseHistory]);
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return html`
+        <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl shadow-2xl">
+          <p className="text-[10px] font-black text-slate-500 uppercase mb-2">${label}</p>
+          <div className="space-y-1">
+            <p className="text-emerald-400 font-bold text-sm">Gewicht: ${payload[0].value} kg</p>
+            <p className="text-indigo-400 font-bold text-sm">Wdh: ${payload[1].value}</p>
+          </div>
+        </div>
+      `;
+    }
+    return null;
+  };
 
   return html`
     <div className="fixed inset-0 z-[100] bg-slate-950 flex flex-col pt-safe animate-in slide-in-from-right duration-300">
@@ -74,97 +103,118 @@ const ExerciseDetail = ({ exercise, history, onClose }) => {
         </button>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-4 space-y-6 pb-12">
+      <main className="flex-1 overflow-y-auto p-4 space-y-6 pb-20">
         ${!stats ? html`
           <div className="flex flex-col items-center justify-center py-20 text-slate-600 gap-4">
             <div className="w-20 h-20 bg-slate-900 rounded-full flex items-center justify-center shadow-inner">
               <${Activity} size=${40} className="opacity-20" />
             </div>
-            <p className="font-bold text-sm uppercase tracking-widest">Noch keine Daten verfügbar</p>
+            <p className="font-bold text-sm uppercase tracking-widest">Keine Trainingsdaten</p>
           </div>
         ` : html`
-          <!-- QUICK STATS -->
+          <!-- DASHBOARD STATS -->
           <div className="grid grid-cols-2 gap-3">
-             <div className="bg-slate-900 p-5 rounded-[28px] border border-slate-800 shadow-lg">
-                <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1"><${Target} size=${10} className="text-emerald-500" /> Max Weight</div>
+             <div className="bg-slate-900 p-5 rounded-[28px] border border-slate-800 shadow-lg relative overflow-hidden group">
+                <div className="absolute -right-2 -top-2 opacity-5 group-hover:opacity-10 transition-opacity"><${Target} size=${80} /></div>
+                <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Personal Record</div>
                 <div className="text-2xl font-black text-white">${stats.maxWeight} <span className="text-xs text-slate-500">kg</span></div>
              </div>
-             <div className="bg-slate-900 p-5 rounded-[28px] border border-slate-800 shadow-lg">
-                <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1"><${TrendingUp} size=${10} className="text-indigo-500" /> Est. 1RM</div>
+             <div className="bg-slate-900 p-5 rounded-[28px] border border-slate-800 shadow-lg relative overflow-hidden group">
+                <div className="absolute -right-2 -top-2 opacity-5 group-hover:opacity-10 transition-opacity"><${TrendingUp} size=${80} /></div>
+                <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Est. 1RM</div>
                 <div className="text-2xl font-black text-white">${stats.est1RM} <span className="text-xs text-slate-500">kg</span></div>
              </div>
           </div>
 
-          <!-- CHART CARD -->
+          <!-- CHART: Peak Performance -->
           <div className="bg-slate-900 p-6 rounded-[32px] border border-slate-800 shadow-xl space-y-6">
             <div className="flex justify-between items-center">
-              <h3 className="text-xs font-black text-slate-300 uppercase tracking-widest">Fortschritt</h3>
-              <div className="flex gap-2 text-[8px] font-bold uppercase">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Gewicht</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-indigo-500"></span> Reps</span>
+              <div>
+                <h3 className="text-xs font-black text-slate-100 uppercase tracking-widest">Höchstleistung</h3>
+                <p className="text-[9px] text-slate-500 font-bold uppercase mt-0.5">Bestwert pro Session</p>
+              </div>
+              <div className="flex gap-3 text-[8px] font-black uppercase tracking-tighter">
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> KG</span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-indigo-500"></span> WDH</span>
               </div>
             </div>
             
             <div className="h-64 w-full">
               <${ResponsiveContainer} width="100%" height="100%">
-                <${AreaChart} data=${stats.dailyData}>
+                <${ComposedChart} data=${stats.dailyData}>
                   <defs>
-                    <linearGradient id="colorWeight" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                    <linearGradient id="colorPeak" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorReps" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
                   <${CartesianGrid} strokeDasharray="3 3" stroke="#1e293b" vertical=${false} />
                   <${XAxis} dataKey="formattedDate" axisLine=${false} tickLine=${false} tick=${{fill: '#64748b', fontSize: 10, fontWeight: 'bold'}} />
-                  <${YAxis} yAxisId="left" hide domain=${['dataMin - 5', 'dataMax + 5']} />
-                  <${YAxis} yAxisId="right" hide orientation="right" domain=${[0, 'dataMax + 2']} />
-                  <${Tooltip} 
-                    contentStyle=${{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '16px', fontSize: '12px'}}
-                    itemStyle=${{fontWeight: 'bold'}}
-                  />
-                  <${Area} yAxisId="left" type="monotone" dataKey="maxWeight" stroke="#10b981" strokeWidth=${3} fillOpacity={1} fill="url(#colorWeight)" animationDuration=${1000} />
-                  <${Area} yAxisId="right" type="monotone" dataKey="maxReps" stroke="#6366f1" strokeWidth=${2} fillOpacity={1} fill="url(#colorReps)" strokeDasharray="5 5" />
+                  <${YAxis} yAxisId="left" hide domain=${['dataMin - 10', 'dataMax + 10']} />
+                  <${YAxis} yAxisId="right" hide orientation="right" domain=${[0, 'dataMax + 5']} />
+                  <${Tooltip} content=${html`<${CustomTooltip} />`} />
+                  <${Area} yAxisId="left" type="monotone" dataKey="peakWeight" stroke="#10b981" strokeWidth=${4} fillOpacity={1} fill="url(#colorPeak)" />
+                  <${Bar} yAxisId="right" dataKey="peakReps" fill="#6366f1" radius=${[4, 4, 0, 0]} barSize=${12} opacity=${0.6} />
                 <//>
               <//>
             </div>
           </div>
 
-          <!-- HISTORY TABLE -->
-          <section className="space-y-3">
-             <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Satz-Historie</h3>
-             <div className="bg-slate-900 rounded-[28px] border border-slate-800 overflow-hidden divide-y divide-slate-800/50">
-                ${[...exerciseHistory].reverse().map((h, i) => html`
-                  <div key=${i} className="p-4 space-y-2 group">
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <span className="w-7 h-7 bg-slate-950 rounded-lg flex items-center justify-center text-[10px] font-black text-slate-500">S${h.setIndex}</span>
-                        <div className="flex flex-col">
-                           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">${new Date(h.date).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })}</span>
-                           <span className="text-sm font-black text-white">${h.weight} kg x ${h.reps}</span>
+          <!-- SESSION HISTORY WITH SET COMPARISON -->
+          <section className="space-y-4">
+             <div className="flex items-center justify-between px-1">
+                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Session Vergleich</h3>
+                <${ListFilter} size=${14} className="text-slate-600" />
+             </div>
+             
+             <div className="space-y-6">
+                ${Object.keys(stats.groupedByDate).sort((a,b) => new Date(b) - new Date(a)).map(date => {
+                  const daySets = stats.groupedByDate[date];
+                  return html`
+                    <div key=${date} className="bg-slate-900 rounded-[32px] border border-slate-800 overflow-hidden shadow-lg">
+                      <div className="px-5 py-4 bg-slate-800/20 border-b border-slate-800/50 flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-slate-950 rounded-xl flex items-center justify-center text-emerald-500 shadow-inner">
+                            <${Calendar} size=${18} />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black text-slate-500 uppercase">${new Date(date).toLocaleDateString('de-DE', { weekday: 'long' })}</p>
+                            <p className="text-sm font-black text-white">${new Date(date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[9px] font-black text-slate-600 uppercase">Volumen</p>
+                          <p className="text-xs font-bold text-indigo-400">${daySets.reduce((a, b) => a + b.volume, 0)} kg</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
-                          <span className="text-[9px] font-black text-slate-600 uppercase block">RIR</span>
-                          <span className=${`text-xs font-bold ${h.rir === 0 ? 'text-red-400' : 'text-emerald-400'}`}>${h.rir}</span>
-                        </div>
-                        <div className="text-right">
-                           <span className="text-[9px] font-black text-slate-600 uppercase block">Volume</span>
-                           <span className="text-xs font-bold text-indigo-400">${h.volume}</span>
-                        </div>
+                      
+                      <div className="divide-y divide-slate-800/30">
+                        ${daySets.map((s, idx) => html`
+                          <div key=${idx} className="p-4 flex items-center justify-between hover:bg-slate-800/10 transition-colors">
+                            <div className="flex items-center gap-4">
+                              <span className="w-6 h-6 rounded-lg bg-slate-950 flex items-center justify-center text-[10px] font-black text-slate-600">S${s.setIndex}</span>
+                              <div className="flex flex-col">
+                                <span className="text-sm font-black text-white">${s.weight} <span className="text-[10px] text-slate-500 font-bold">kg</span></span>
+                                ${s.note && html`<span className="text-[10px] text-slate-500 italic truncate max-w-[150px]">"${s.note}"</span>`}
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-6">
+                               <div className="text-center">
+                                  <span className="text-[8px] font-black text-slate-600 uppercase block">WDH</span>
+                                  <span className="text-sm font-black text-indigo-400">${s.reps}</span>
+                               </div>
+                               <div className="text-center">
+                                  <span className="text-[8px] font-black text-slate-600 uppercase block">RIR</span>
+                                  <span className=${`text-sm font-black ${s.rir === 0 ? 'text-red-400' : 'text-emerald-400'}`}>${s.rir}</span>
+                               </div>
+                            </div>
+                          </div>
+                        `)}
                       </div>
                     </div>
-                    ${h.note && html`
-                      <div className="bg-slate-950/50 p-2 rounded-xl text-[10px] text-slate-400 italic border-l-2 border-indigo-500/50">
-                        "${h.note}"
-                      </div>
-                    `}
-                  </div>
-                `)}
+                  `;
+                })}
              </div>
           </section>
         `}
