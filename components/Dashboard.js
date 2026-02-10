@@ -1,7 +1,7 @@
 
 import React, { useRef, useState } from 'react';
 import htm from 'htm';
-import { Play, Download, Upload, ShieldCheck, Scale, Plus, Settings, Trash2, Edit2, X, Check, ChevronUp, ChevronDown } from 'lucide-react';
+import { Play, Download, Upload, ShieldCheck, Scale, Plus, Settings, Trash2, Edit2, X, Check, ChevronUp, ChevronDown, Activity } from 'lucide-react';
 
 const html = htm.bind(React.createElement);
 
@@ -10,6 +10,8 @@ export const Dashboard = ({
   exercises,
   history, 
   weightLogs,
+  activeWorkoutSession,
+  onContinueWorkout,
   onAddWeight, 
   onStartWorkout, 
   onAddTemplate,
@@ -31,12 +33,7 @@ export const Dashboard = ({
   };
 
   const handleExport = () => {
-    const backupData = { 
-      history, 
-      templates, 
-      exercises,
-      weightLogs 
-    };
+    const backupData = { history, templates, exercises, weightLogs };
     const dataStr = JSON.stringify(backupData, null, 2);
     const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -85,6 +82,25 @@ export const Dashboard = ({
         <h1 className="text-4xl font-black text-white mb-2 tracking-tight">KraftLog</h1>
         <p className="text-slate-400 font-medium italic">Privat. Lokal. Sicher.</p>
       </header>
+
+      ${activeWorkoutSession && html`
+        <section className="animate-pulse">
+          <button 
+            onClick=${onContinueWorkout}
+            className="w-full bg-emerald-600/20 border border-emerald-500/50 p-6 rounded-[28px] text-left transition-all flex justify-between items-center shadow-lg active:scale-95"
+          >
+            <div>
+              <h2 className="text-emerald-400 font-black text-xs uppercase tracking-widest mb-1 flex items-center gap-2">
+                <${Activity} size=${14} /> Training läuft
+              </h2>
+              <h3 className="font-bold text-xl text-white">${activeWorkoutSession.name}</h3>
+            </div>
+            <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg">
+              <${Play} className="w-6 h-6 fill-current" />
+            </div>
+          </button>
+        </section>
+      `}
 
       <section>
         <div className="flex justify-between items-center mb-4">
@@ -155,68 +171,22 @@ export const Dashboard = ({
               <h3 className="font-bold text-white text-lg">${editingTemplate.id ? 'Tag bearbeiten' : 'Neuer Tag'}</h3>
               <button onClick=${() => setEditingTemplate(null)} className="w-8 h-8 flex items-center justify-center bg-slate-800 rounded-full text-slate-300"><${X} size=${18} /></button>
             </div>
-            
             <div className="p-4 space-y-3 flex-1 overflow-y-auto pb-24">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Name</label>
-                <input 
-                  type="text"
-                  value=${editingTemplate.name}
-                  onChange=${(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
-                  placeholder="z.B. Oberkörper"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-emerald-500 transition-all font-bold text-sm"
-                />
-              </div>
-
-              <!-- Reorder-Liste der bereits gewählten Übungen -->
-              ${editingTemplate.exercises.length > 0 && html`
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest ml-1">Reihenfolge</label>
-                  <div className="space-y-1">
-                    ${editingTemplate.exercises.map((exId, idx) => {
-                      const ex = exercises.find(e => e.id === exId);
-                      return html`
-                        <div key=${exId} className="flex items-center gap-2 bg-slate-800/40 p-2 rounded-xl border border-slate-700/50">
-                          <span className="flex-1 font-bold text-xs text-slate-200 truncate">${ex?.name || 'Unbekannt'}</span>
-                          <div className="flex gap-0.5">
-                            <button onClick=${() => moveExercise(idx, -1)} className="p-1.5 text-slate-400 disabled:opacity-20" disabled=${idx === 0}><${ChevronUp} size=${14}/></button>
-                            <button onClick=${() => moveExercise(idx, 1)} className="p-1.5 text-slate-400 disabled:opacity-20" disabled=${idx === editingTemplate.exercises.length - 1}><${ChevronDown} size=${14}/></button>
-                            <button onClick=${() => toggleExerciseInTemplate(exId)} className="p-1.5 text-red-400/60"><${Trash2} size=${14}/></button>
-                          </div>
-                        </div>
-                      `;
-                    })}
-                  </div>
-                </div>
-              `}
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Übungen wählen</label>
-                <div className="grid grid-cols-1 gap-1.5">
-                  ${exercises.map(ex => {
-                    const isSelected = editingTemplate.exercises.includes(ex.id);
-                    return html`
-                      <button 
-                        key=${ex.id}
-                        onClick=${() => toggleExerciseInTemplate(ex.id)}
-                        className=${`w-full p-3 rounded-xl border text-left transition-all flex justify-between items-center ${isSelected ? 'bg-emerald-600/10 border-emerald-500 text-white' : 'bg-slate-950/50 border-slate-800 text-slate-400'}`}
-                      >
-                        <span className="font-bold text-xs">${ex.name}</span>
-                        ${isSelected && html`<${Check} size=${14} className="text-emerald-500" />`}
-                      </button>
-                    `;
-                  })}
-                </div>
+              <input type="text" value=${editingTemplate.name} onChange=${(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })} placeholder="Name" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white outline-none focus:border-emerald-500 transition-all font-bold text-sm" />
+              <div className="grid grid-cols-1 gap-1.5">
+                ${exercises.map(ex => {
+                  const isSelected = editingTemplate.exercises.includes(ex.id);
+                  return html`
+                    <button key=${ex.id} onClick=${() => toggleExerciseInTemplate(ex.id)} className=${`w-full p-3 rounded-xl border text-left transition-all flex justify-between items-center ${isSelected ? 'bg-emerald-600/10 border-emerald-500 text-white' : 'bg-slate-950/50 border-slate-800 text-slate-400'}`}>
+                      <span className="font-bold text-xs">${ex.name}</span>
+                      ${isSelected && html`<${Check} size=${14} className="text-emerald-500" />`}
+                    </button>
+                  `;
+                })}
               </div>
             </div>
-
             <div className="p-4 bg-slate-900 border-t border-slate-800 shrink-0">
-              <button 
-                onClick=${saveTemplate}
-                className="w-full bg-emerald-600 text-white py-3.5 rounded-xl font-black shadow-lg active:scale-95 transition-all text-sm"
-              >
-                Plan speichern
-              </button>
+              <button onClick=${saveTemplate} className="w-full bg-emerald-600 text-white py-3.5 rounded-xl font-black shadow-lg">Speichern</button>
             </div>
           </div>
         </div>
@@ -229,36 +199,15 @@ export const Dashboard = ({
         </h2>
         <form onSubmit=${handleAddWeightSubmit} className="space-y-3">
           <div className="flex gap-2 items-stretch">
-            <input 
-              type="date"
-              value=${dateInput}
-              onChange=${(e) => setDateInput(e.target.value)}
-              className="bg-slate-950 border border-slate-800 rounded-xl px-2 py-3 text-white outline-none focus:border-emerald-500 transition-all text-[10px] w-[30%] min-w-0"
-            />
-            <input 
-              type="number" 
-              step="0.1"
-              inputMode="decimal"
-              placeholder="kg"
-              value=${weightInput}
-              onChange=${(e) => setWeightInput(e.target.value)}
-              className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-3 text-white outline-none focus:border-emerald-500 transition-all font-bold text-sm min-w-0"
-            />
-            <button 
-              type="submit"
-              className="px-4 bg-emerald-600 text-white rounded-xl flex items-center justify-center active:scale-95 transition-all shadow-lg hover:bg-emerald-500 shrink-0"
-            >
-              <${Plus} size=${20} />
-            </button>
+            <input type="date" value=${dateInput} onChange=${(e) => setDateInput(e.target.value)} className="bg-slate-950 border border-slate-800 rounded-xl px-2 py-3 text-white outline-none focus:border-emerald-500 transition-all text-[10px] w-[30%] min-w-0" />
+            <input type="number" step="0.1" inputMode="decimal" placeholder="kg" value=${weightInput} onChange=${(e) => setWeightInput(e.target.value)} className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-3 text-white outline-none focus:border-emerald-500 transition-all font-bold text-sm min-w-0" />
+            <button type="submit" className="px-4 bg-emerald-600 text-white rounded-xl flex items-center justify-center active:scale-95 transition-all shadow-lg hover:bg-emerald-500 shrink-0"><${Plus} size=${20} /></button>
           </div>
-          <p className="text-[9px] text-slate-500 text-center italic">Für Analysen siehe den "Gewicht" Tab.</p>
         </form>
       </section>
 
       <section className="bg-slate-900/30 p-6 rounded-[32px] border border-slate-800/50">
-        <h2 className="text-xs font-black text-slate-500 mb-4 flex items-center gap-2 uppercase tracking-widest">
-          <${ShieldCheck} className="w-4 h-4" /> Daten-Backup
-        </h2>
+        <h2 className="text-xs font-black text-slate-500 mb-4 flex items-center gap-2 uppercase tracking-widest"><${ShieldCheck} className="w-4 h-4" /> Daten-Backup</h2>
         <div className="grid grid-cols-2 gap-4">
           <button onClick=${handleExport} className="flex flex-col items-center p-4 bg-slate-800/40 rounded-2xl gap-2 active:bg-slate-700 border border-slate-700/50 transition-all">
             <${Download} className="w-5 h-5 text-emerald-400" />
@@ -275,15 +224,8 @@ export const Dashboard = ({
               reader.onload = (ev) => {
                 try {
                   const parsed = JSON.parse(ev.target?.result);
-                  // Kompatibilität mit altem Format (nur history) und neuem Backup-Format
-                  if (Array.isArray(parsed)) {
-                    onImportBackup({ history: parsed });
-                  } else if (parsed.history || parsed.exercises || parsed.templates || parsed.weightLogs) {
-                    onImportBackup(parsed);
-                  }
-                } catch (err) {
-                  console.error("Fehler beim Backup-Import", err);
-                }
+                  onImportBackup(parsed);
+                } catch (err) { console.error(err); }
               };
               reader.readAsText(file);
           }} accept=".json" className="hidden" />
