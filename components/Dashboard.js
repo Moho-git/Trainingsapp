@@ -68,14 +68,6 @@ export const Dashboard = ({
     }
   };
 
-  const moveExercise = (index, direction) => {
-    const newExercises = [...editingTemplate.exercises];
-    const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= newExercises.length) return;
-    [newExercises[index], newExercises[targetIndex]] = [newExercises[targetIndex], newExercises[index]];
-    setEditingTemplate({ ...editingTemplate, exercises: newExercises });
-  };
-
   return html`
     <div className="space-y-6 pb-24">
       <header className="mb-6">
@@ -83,7 +75,7 @@ export const Dashboard = ({
         <p className="text-slate-400 font-medium italic">Privat. Lokal. Sicher.</p>
       </header>
 
-      ${activeWorkoutSession && html`
+      ${activeWorkoutSession && activeWorkoutSession.isStarted && html`
         <section className="animate-pulse">
           <button 
             onClick=${onContinueWorkout}
@@ -192,7 +184,6 @@ export const Dashboard = ({
         </div>
       `}
 
-      <!-- Kurze Gewichtseingabe -->
       <section className="bg-slate-900/50 p-6 rounded-[32px] border border-slate-800 space-y-4">
         <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
           <${Scale} className="w-4 h-4 text-emerald-500" /> Gewicht tracken

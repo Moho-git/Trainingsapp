@@ -95,23 +95,23 @@ export const ActiveWorkout = ({ session, editingWorkout, allExercises, history, 
           <h2 className="font-bold text-white text-sm">Vorbereitung</h2>
           <div className="w-10"></div>
         </header>
-        <main className="flex-1 overflow-y-auto p-4 space-y-3">
-          <div className="bg-slate-900 p-5 rounded-3xl border border-slate-800 mb-2">
+        <main className="flex-1 overflow-y-auto p-4 space-y-2">
+          <div className="bg-slate-900 p-4 rounded-3xl border border-slate-800 mb-2">
             <h1 className="text-xl font-black text-white">${session?.name}</h1>
-            <p className="text-slate-500 text-[10px] uppercase font-bold tracking-widest mt-1">Reihenfolge anpassen</p>
+            <p className="text-slate-500 text-[9px] uppercase font-bold tracking-widest mt-1">Reihenfolge & Übungen</p>
           </div>
           ${exercises.map((ex, idx) => html`
-            <div key=${idx} className="flex items-center gap-3 bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-md">
-              <div className="flex flex-col gap-1 shrink-0">
-                 <button onClick=${() => moveExercise(idx, -1)} disabled=${idx === 0} className="p-1 text-slate-600 disabled:opacity-0 active:text-white"><${ChevronUp} size=${20} /></button>
-                 <button onClick=${() => moveExercise(idx, 1)} disabled=${idx === exercises.length - 1} className="p-1 text-slate-600 disabled:opacity-0 active:text-white"><${ChevronDown} size=${20} /></button>
+            <div key=${idx} className="flex items-center gap-2 bg-slate-900 p-2.5 rounded-xl border border-slate-800 shadow-sm transition-all">
+              <div className="flex flex-col shrink-0">
+                 <button onClick=${() => moveExercise(idx, -1)} disabled=${idx === 0} className="p-1 text-slate-600 disabled:opacity-0 active:text-white transition-colors"><${ChevronUp} size=${18} /></button>
+                 <button onClick=${() => moveExercise(idx, 1)} disabled=${idx === exercises.length - 1} className="p-1 text-slate-600 disabled:opacity-0 active:text-white transition-colors"><${ChevronDown} size=${18} /></button>
               </div>
-              <span className="font-bold text-slate-100 text-sm flex-1">${getExerciseName(ex.exerciseId)}</span>
-              <button onClick=${() => setExercises(exercises.filter((_, i) => i !== idx))} className="text-red-500/40 p-2 active:text-red-500"><${Trash2} size=${20} /></button>
+              <span className="font-bold text-slate-200 text-xs flex-1 truncate">${getExerciseName(ex.exerciseId)}</span>
+              <button onClick=${() => setExercises(exercises.filter((_, i) => i !== idx))} className="text-red-500/30 p-2 active:text-red-500 transition-colors"><${Trash2} size=${18} /></button>
             </div>
           `)}
-          <button onClick=${() => setShowAddExercise(true)} className="w-full py-5 border-2 border-dashed border-slate-800 rounded-2xl text-slate-500 font-bold flex items-center justify-center gap-2 text-sm active:bg-slate-900 transition-all">
-            <${Plus} size=${18} /> Übung hinzufügen
+          <button onClick=${() => setShowAddExercise(true)} className="w-full py-4 border-2 border-dashed border-slate-800 rounded-xl text-slate-500 font-bold flex items-center justify-center gap-2 text-xs active:bg-slate-900 transition-all">
+            <${Plus} size=${16} /> Übung hinzufügen
           </button>
         </main>
         <div className="p-6 bg-slate-900 border-t border-slate-800">
