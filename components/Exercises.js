@@ -1,16 +1,14 @@
 
 import React, { useState, useMemo } from 'react';
 import htm from 'htm';
-import { Plus, Edit2, Trash2, Check, X, Search, ChevronRight, TrendingUp, Calendar, Target, Activity, ArrowUpRight, BarChart3, ListFilter } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Bar, Line } from 'recharts';
+import { Plus, Edit2, Trash2, Check, X, Search, TrendingUp, Calendar, Target, Activity, ListFilter, Award, Zap } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Bar } from 'recharts';
 
 const html = htm.bind(React.createElement);
 
 const CATEGORIES = ['Brust', 'Rücken', 'Beine', 'Arme', 'Bauch', 'Schultern'];
 
 const ExerciseDetail = ({ exercise, history, onClose }) => {
-  const [activeMetric, setActiveMetric] = useState('peak'); // 'peak' or 'volume'
-
   const exerciseHistory = useMemo(() => {
     const data = [];
     history.forEach(workout => {
@@ -23,7 +21,6 @@ const ExerciseDetail = ({ exercise, history, onClose }) => {
             weight: set.weight,
             reps: set.reps,
             rir: set.rir || 0,
-            volume: set.weight * set.reps,
             setIndex: setIdx + 1,
             note: set.note || ''
           });
@@ -47,7 +44,7 @@ const ExerciseDetail = ({ exercise, history, onClose }) => {
     Object.keys(groupedByDate).forEach(date => {
       const daySets = groupedByDate[date];
       
-      // Find the "Peak Set": Highest weight, then most reps
+      // PEAK SET: Set with highest weight. If weight is same, set with more reps.
       const peakSet = daySets.reduce((prev, curr) => {
         if (curr.weight > prev.weight) return curr;
         if (curr.weight === prev.weight && curr.reps > prev.reps) return curr;
@@ -59,17 +56,22 @@ const ExerciseDetail = ({ exercise, history, onClose }) => {
         formattedDate: new Date(date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }),
         peakWeight: peakSet.weight,
         peakReps: peakSet.reps,
-        totalVolume: daySets.reduce((a, b) => a + b.volume, 0),
         avgRIR: daySets.reduce((a, b) => a + (b.rir || 0), 0) / daySets.length
       });
     });
 
-    const maxWeight = Math.max(...exerciseHistory.map(h => h.weight));
-    const bestSet = exerciseHistory.reduce((prev, curr) => (curr.weight > prev.weight) ? curr : prev, exerciseHistory[0]);
-    const est1RM = bestSet.weight * (1 + (bestSet.reps / 30));
+    // ALL-TIME BEST (Peak weight and the reps it was achieved with)
+    const allTimeBest = dailyData.reduce((prev, curr) => {
+      if (curr.peakWeight > prev.peakWeight) return curr;
+      if (curr.peakWeight === prev.peakWeight && curr.peakReps > prev.peakReps) return curr;
+      return prev;
+    }, dailyData[0]);
+
+    // EST 1RM (calculated from the all-time best weight/reps)
+    const est1RM = allTimeBest.peakWeight * (1 + (allTimeBest.peakReps / 30));
 
     return { 
-      maxWeight, 
+      allTimeBest,
       est1RM: est1RM.toFixed(1), 
       dailyData: dailyData.sort((a,b) => new Date(a.date) - new Date(b.date)),
       groupedByDate
@@ -83,7 +85,7 @@ const ExerciseDetail = ({ exercise, history, onClose }) => {
           <p className="text-[10px] font-black text-slate-500 uppercase mb-2">${label}</p>
           <div className="space-y-1">
             <p className="text-emerald-400 font-bold text-sm">Gewicht: ${payload[0].value} kg</p>
-            <p className="text-indigo-400 font-bold text-sm">Wdh: ${payload[1].value}</p>
+            <p className="text-indigo-400 font-bold text-sm">WDH: ${payload[1].value}</p>
           </div>
         </div>
       `;
@@ -109,33 +111,44 @@ const ExerciseDetail = ({ exercise, history, onClose }) => {
             <div className="w-20 h-20 bg-slate-900 rounded-full flex items-center justify-center shadow-inner">
               <${Activity} size=${40} className="opacity-20" />
             </div>
-            <p className="font-bold text-sm uppercase tracking-widest">Keine Trainingsdaten</p>
+            <p className="font-bold text-sm uppercase tracking-widest">Keine Daten vorhanden</p>
           </div>
         ` : html`
-          <!-- DASHBOARD STATS -->
-          <div className="grid grid-cols-2 gap-3">
-             <div className="bg-slate-900 p-5 rounded-[28px] border border-slate-800 shadow-lg relative overflow-hidden group">
-                <div className="absolute -right-2 -top-2 opacity-5 group-hover:opacity-10 transition-opacity"><${Target} size=${80} /></div>
-                <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Personal Record</div>
-                <div className="text-2xl font-black text-white">${stats.maxWeight} <span className="text-xs text-slate-500">kg</span></div>
-             </div>
-             <div className="bg-slate-900 p-5 rounded-[28px] border border-slate-800 shadow-lg relative overflow-hidden group">
-                <div className="absolute -right-2 -top-2 opacity-5 group-hover:opacity-10 transition-opacity"><${TrendingUp} size=${80} /></div>
-                <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Est. 1RM</div>
-                <div className="text-2xl font-black text-white">${stats.est1RM} <span className="text-xs text-slate-500">kg</span></div>
-             </div>
+          <!-- BESTLEISTUNG HIGHLIGHT -->
+          <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 p-6 rounded-[32px] shadow-xl relative overflow-hidden">
+            <div className="absolute -right-4 -bottom-4 opacity-10"><${Award} size=${120} /></div>
+            <div className="relative z-10">
+              <p className="text-[10px] font-black text-emerald-100 uppercase tracking-widest mb-1 flex items-center gap-1">
+                <${Zap} size=${10} /> Bisherige Bestleistung
+              </p>
+              <div className="flex items-baseline gap-2">
+                <h1 className="text-5xl font-black text-white">${stats.allTimeBest.peakWeight}</h1>
+                <span className="text-emerald-100 font-black text-xl">kg</span>
+                <span className="text-emerald-100 font-bold text-sm ml-2">@ ${stats.allTimeBest.peakReps} Reps</span>
+              </div>
+              <div className="mt-4 flex gap-4">
+                <div className="bg-white/10 px-3 py-1.5 rounded-full border border-white/10">
+                  <span className="text-[9px] font-black text-emerald-50 uppercase mr-1">Est. 1RM</span>
+                  <span className="text-xs font-black text-white">${stats.est1RM}kg</span>
+                </div>
+                <div className="bg-white/10 px-3 py-1.5 rounded-full border border-white/10">
+                  <span className="text-[9px] font-black text-emerald-50 uppercase mr-1">Datum</span>
+                  <span className="text-xs font-black text-white">${new Date(stats.allTimeBest.date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- CHART: Peak Performance -->
           <div className="bg-slate-900 p-6 rounded-[32px] border border-slate-800 shadow-xl space-y-6">
             <div className="flex justify-between items-center">
               <div>
-                <h3 className="text-xs font-black text-slate-100 uppercase tracking-widest">Höchstleistung</h3>
-                <p className="text-[9px] text-slate-500 font-bold uppercase mt-0.5">Bestwert pro Session</p>
+                <h3 className="text-xs font-black text-slate-100 uppercase tracking-widest">Progress-Chart</h3>
+                <p className="text-[9px] text-slate-500 font-bold uppercase mt-0.5">Stärkster Satz pro Session</p>
               </div>
               <div className="flex gap-3 text-[8px] font-black uppercase tracking-tighter">
                 <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> KG</span>
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-indigo-500"></span> WDH</span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-indigo-500"></span> REPS</span>
               </div>
             </div>
             
@@ -153,63 +166,63 @@ const ExerciseDetail = ({ exercise, history, onClose }) => {
                   <${YAxis} yAxisId="left" hide domain=${['dataMin - 10', 'dataMax + 10']} />
                   <${YAxis} yAxisId="right" hide orientation="right" domain=${[0, 'dataMax + 5']} />
                   <${Tooltip} content=${html`<${CustomTooltip} />`} />
-                  <${Area} yAxisId="left" type="monotone" dataKey="peakWeight" stroke="#10b981" strokeWidth=${4} fillOpacity={1} fill="url(#colorPeak)" />
-                  <${Bar} yAxisId="right" dataKey="peakReps" fill="#6366f1" radius=${[4, 4, 0, 0]} barSize=${12} opacity=${0.6} />
+                  <${Area} yAxisId="left" type="monotone" dataKey="peakWeight" stroke="#10b981" strokeWidth=${4} fillOpacity={1} fill="url(#colorPeak)" animationDuration=${800} />
+                  <${Bar} yAxisId="right" dataKey="peakReps" fill="#6366f1" radius=${[4, 4, 0, 0]} barSize=${16} opacity=${0.6} animationDuration=${1000} />
                 <//>
               <//>
             </div>
           </div>
 
-          <!-- SESSION HISTORY WITH SET COMPARISON -->
+          <!-- SESSION HISTORY WITH ALIGNED SET COMPARISON -->
           <section className="space-y-4">
              <div className="flex items-center justify-between px-1">
                 <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Session Vergleich</h3>
                 <${ListFilter} size=${14} className="text-slate-600" />
              </div>
              
-             <div className="space-y-6">
+             <div className="space-y-4">
                 ${Object.keys(stats.groupedByDate).sort((a,b) => new Date(b) - new Date(a)).map(date => {
                   const daySets = stats.groupedByDate[date];
                   return html`
                     <div key=${date} className="bg-slate-900 rounded-[32px] border border-slate-800 overflow-hidden shadow-lg">
-                      <div className="px-5 py-4 bg-slate-800/20 border-b border-slate-800/50 flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-slate-950 rounded-xl flex items-center justify-center text-emerald-500 shadow-inner">
-                            <${Calendar} size=${18} />
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-black text-slate-500 uppercase">${new Date(date).toLocaleDateString('de-DE', { weekday: 'long' })}</p>
-                            <p className="text-sm font-black text-white">${new Date(date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })}</p>
-                          </div>
+                      <div className="px-5 py-3 bg-slate-800/20 border-b border-slate-800/50 flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">${new Date(date).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
                         </div>
-                        <div className="text-right">
-                          <p className="text-[9px] font-black text-slate-600 uppercase">Volumen</p>
-                          <p className="text-xs font-bold text-indigo-400">${daySets.reduce((a, b) => a + b.volume, 0)} kg</p>
+                        <div className="flex gap-4">
+                           <div className="text-right">
+                              <p className="text-[8px] font-black text-slate-600 uppercase">Sätze</p>
+                              <p className="text-[10px] font-bold text-white">${daySets.length}</p>
+                           </div>
                         </div>
                       </div>
                       
-                      <div className="divide-y divide-slate-800/30">
+                      <div className="divide-y divide-slate-800/20">
                         ${daySets.map((s, idx) => html`
-                          <div key=${idx} className="p-4 flex items-center justify-between hover:bg-slate-800/10 transition-colors">
-                            <div className="flex items-center gap-4">
-                              <span className="w-6 h-6 rounded-lg bg-slate-950 flex items-center justify-center text-[10px] font-black text-slate-600">S${s.setIndex}</span>
+                          <div key=${idx} className="p-3 flex items-center justify-between hover:bg-slate-800/10 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <span className="w-8 h-8 rounded-lg bg-slate-950 flex items-center justify-center text-[10px] font-black text-slate-600 border border-slate-800/50">S${s.setIndex}</span>
                               <div className="flex flex-col">
-                                <span className="text-sm font-black text-white">${s.weight} <span className="text-[10px] text-slate-500 font-bold">kg</span></span>
-                                ${s.note && html`<span className="text-[10px] text-slate-500 italic truncate max-w-[150px]">"${s.note}"</span>`}
+                                <span className="text-sm font-black text-white">${s.weight} <span className="text-[10px] text-slate-500 font-bold tracking-tighter uppercase">kg</span></span>
                               </div>
                             </div>
                             
                             <div className="flex items-center gap-6">
-                               <div className="text-center">
+                               <div className="text-center w-8">
                                   <span className="text-[8px] font-black text-slate-600 uppercase block">WDH</span>
                                   <span className="text-sm font-black text-indigo-400">${s.reps}</span>
                                </div>
-                               <div className="text-center">
+                               <div className="text-center w-6">
                                   <span className="text-[8px] font-black text-slate-600 uppercase block">RIR</span>
                                   <span className=${`text-sm font-black ${s.rir === 0 ? 'text-red-400' : 'text-emerald-400'}`}>${s.rir}</span>
                                </div>
                             </div>
                           </div>
+                          ${s.note && html`
+                            <div className="px-14 pb-3 -mt-1">
+                               <p className="text-[9px] text-slate-500 italic border-l border-emerald-500/30 pl-2">"${s.note}"</p>
+                            </div>
+                          `}
                         `)}
                       </div>
                     </div>
