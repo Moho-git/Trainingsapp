@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import htm from 'htm';
-import { Save, Plus, Check, ChevronLeft, Trash2, X, AlertTriangle, ChevronUp, ChevronDown, Minimize2, StickyNote, Edit2 } from 'lucide-react';
+import { Save, Plus, Check, ChevronLeft, Trash2, X, AlertTriangle, ChevronUp, ChevronDown, Minimize2, StickyNote, Edit2, History as HistoryIcon, ArrowUpRight } from 'lucide-react';
 
 const html = htm.bind(React.createElement);
 const generateId = () => Math.random().toString(36).substring(2, 15);
@@ -56,6 +56,13 @@ export const ActiveWorkout = ({
   };
 
   const getExerciseName = (id) => allExercises.find(e => e.id === id)?.name || id;
+
+  const getLastSessionData = (exerciseId) => {
+    if (!history || history.length === 0) return null;
+    const prevWorkout = history.find(w => w.exercises.some(e => e.exerciseId === exerciseId));
+    if (!prevWorkout) return null;
+    return prevWorkout.exercises.find(e => e.exerciseId === exerciseId);
+  };
 
   const moveExercise = (index, direction) => {
     const newEx = [...exercises];
@@ -175,6 +182,7 @@ export const ActiveWorkout = ({
 
         <!-- EXERCISE LIST -->
         ${exercises.map((ex, exIdx) => {
+          const lastData = getLastSessionData(ex.exerciseId);
           if (!isStarted) {
             return html`
               <div key=${exIdx} className="flex items-center gap-2 bg-slate-900 p-2.5 rounded-xl border border-slate-800 shadow-sm transition-all">
@@ -182,7 +190,14 @@ export const ActiveWorkout = ({
                    <button onClick=${() => moveExercise(exIdx, -1)} disabled=${exIdx === 0} className="p-1 text-slate-600 disabled:opacity-0 active:text-white transition-colors"><${ChevronUp} size=${18} /></button>
                    <button onClick=${() => moveExercise(exIdx, 1)} disabled=${exIdx === exercises.length - 1} className="p-1 text-slate-600 disabled:opacity-0 active:text-white transition-colors"><${ChevronDown} size=${18} /></button>
                 </div>
-                <span className="font-bold text-slate-200 text-xs flex-1 truncate">${getExerciseName(ex.exerciseId)}</span>
+                <div className="flex-1 truncate">
+                  <span className="font-bold text-slate-200 text-xs">${getExerciseName(ex.exerciseId)}</span>
+                  ${lastData && html`
+                    <p className="text-[8px] text-emerald-500/60 font-black uppercase tracking-widest flex items-center gap-1 mt-0.5">
+                      <${HistoryIcon} size=${8} /> Letztes Mal: ${lastData.sets[0]?.weight}kg x ${lastData.sets[0]?.reps}
+                    </p>
+                  `}
+                </div>
                 <button onClick=${() => {
                   const newList = exercises.filter((_, i) => i !== exIdx);
                   setExercises(newList);
@@ -194,7 +209,14 @@ export const ActiveWorkout = ({
             return html`
               <div key=${exIdx} className="bg-slate-900 rounded-[32px] border border-slate-800 overflow-hidden shadow-2xl mb-4">
                 <div className="px-5 py-4 bg-slate-800/30 border-b border-slate-800 flex justify-between items-center">
-                  <h3 className="text-sm font-black text-slate-100 uppercase tracking-tight truncate mr-2">${getExerciseName(ex.exerciseId)}</h3>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-100 uppercase tracking-tight truncate mr-2">${getExerciseName(ex.exerciseId)}</h3>
+                    ${lastData && html`
+                      <p className="text-[9px] font-bold text-emerald-500/40 flex items-center gap-1 mt-0.5 uppercase tracking-tighter">
+                         Peak: ${Math.max(...lastData.sets.map(s => s.weight))}kg
+                      </p>
+                    `}
+                  </div>
                   <div className="flex gap-1 shrink-0">
                      <button onClick=${() => moveExercise(exIdx, -1)} disabled=${exIdx === 0} className="p-1.5 text-slate-500 disabled:opacity-0 active:scale-125 transition-all"><${ChevronUp} size=${18} /></button>
                      <button onClick=${() => moveExercise(exIdx, 1)} disabled=${exIdx === exercises.length - 1} className="p-1.5 text-slate-500 disabled:opacity-0 active:scale-125 transition-all"><${ChevronDown} size=${18} /></button>
@@ -203,8 +225,14 @@ export const ActiveWorkout = ({
                 <div className="p-2 space-y-3">
                   ${ex.sets.map((set, setIdx) => {
                     const hasNote = set.note && set.note.trim().length > 0;
+                    const prevSet = lastData?.sets[setIdx];
                     return html`
                     <div key=${set.id} className="space-y-1">
+                      ${prevSet && html`
+                        <div className="flex items-center gap-1.5 text-[9px] font-black text-emerald-500/30 ml-12 mb-0.5 uppercase tracking-tighter">
+                          <${ArrowUpRight} size=${10} /> Letztes Mal: ${prevSet.weight}kg x ${prevSet.reps} ${prevSet.rir !== undefined ? html`@ ${prevSet.rir}R` : ''}
+                        </div>
+                      `}
                       <div className=${`grid grid-cols-12 gap-1 items-center p-2 rounded-2xl border transition-all ${set.completed ? 'bg-emerald-600/10 border-emerald-500/30' : hasNote ? 'bg-red-500/5 border-red-500/40 shadow-[0_0_10px_rgba(239,68,68,0.1)]' : 'bg-slate-950/40 border-slate-800'}`}>
                         <div className="col-span-1 text-[9px] font-black text-slate-700 text-center">${setIdx + 1}</div>
                         <div className="col-span-3">
