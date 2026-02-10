@@ -12,6 +12,7 @@ export const Dashboard = ({
   weightLogs,
   activeWorkoutSession,
   onContinueWorkout,
+  onAbortActiveSession,
   onAddWeight, 
   onStartWorkout, 
   onAddTemplate,
@@ -76,20 +77,28 @@ export const Dashboard = ({
       </header>
 
       ${activeWorkoutSession && activeWorkoutSession.isStarted && html`
-        <section className="animate-pulse">
+        <section className="relative">
           <button 
             onClick=${onContinueWorkout}
-            className="w-full bg-emerald-600/20 border border-emerald-500/50 p-6 rounded-[28px] text-left transition-all flex justify-between items-center shadow-lg active:scale-95"
+            className="w-full bg-emerald-600/20 border border-emerald-500/50 p-6 rounded-[28px] text-left transition-all flex justify-between items-center shadow-lg active:scale-[0.98] pr-16"
           >
             <div>
               <h2 className="text-emerald-400 font-black text-xs uppercase tracking-widest mb-1 flex items-center gap-2">
-                <${Activity} size=${14} /> Training läuft
+                <${Activity} size=${14} className="animate-pulse" /> Training läuft
               </h2>
               <h3 className="font-bold text-xl text-white">${activeWorkoutSession.name}</h3>
             </div>
             <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg">
               <${Play} className="w-6 h-6 fill-current" />
             </div>
+          </button>
+          
+          <button 
+            onClick=${(e) => { e.stopPropagation(); onAbortActiveSession(); }}
+            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-center text-red-500 shadow-xl active:scale-90 transition-all z-10"
+            title="Training verwerfen"
+          >
+            <${Trash2} size=${18} />
           </button>
         </section>
       `}

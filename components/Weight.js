@@ -17,12 +17,11 @@ const getWeekNumber = (date) => {
 export const Weight = ({ weightLogs, onAddWeight, onUpdateWeight, onDeleteWeight }) => {
   const [weightInput, setWeightInput] = useState('');
   const [dateInput, setDateInput] = useState(new Date().toISOString().split('T')[0]);
-  const [viewMode, setViewMode] = useState('days'); // 'days' or 'weeks'
-  const [timeRange, setTimeRange] = useState(30); // 7, 30, 90, 0 (all)
+  const [viewMode, setViewMode] = useState('days'); 
+  const [timeRange, setTimeRange] = useState(30); 
   const [editingId, setEditingId] = useState(null);
   const [editValue, setEditValue] = useState('');
 
-  // Wochen-Statistiken (immer alle Daten für Trend)
   const weeklyStats = useMemo(() => {
     if (weightLogs.length === 0) return [];
     
@@ -52,7 +51,6 @@ export const Weight = ({ weightLogs, onAddWeight, onUpdateWeight, onDeleteWeight
     });
   }, [weightLogs]);
 
-  // Graph-Daten basierend auf Filtern
   const chartData = useMemo(() => {
     let filtered = [...weightLogs];
     if (timeRange > 0) {
@@ -100,6 +98,12 @@ export const Weight = ({ weightLogs, onAddWeight, onUpdateWeight, onDeleteWeight
     setEditingId(null);
   };
 
+  const handleDelete = (id) => {
+    if (window.confirm("Diesen Gewichtseintrag wirklich löschen?")) {
+      onDeleteWeight(id);
+    }
+  };
+
   return html`
     <div className="space-y-6 pb-24">
       <header>
@@ -107,7 +111,6 @@ export const Weight = ({ weightLogs, onAddWeight, onUpdateWeight, onDeleteWeight
         <p className="text-slate-500 text-sm font-bold uppercase tracking-widest mt-1">Analyse & Trends</p>
       </header>
 
-      <!-- Eingabe -->
       <section className="bg-slate-900 p-6 rounded-[32px] border border-slate-800 shadow-xl">
         <form onSubmit=${handleAddSubmit} className="space-y-4">
           <div className="flex gap-2">
@@ -139,7 +142,6 @@ export const Weight = ({ weightLogs, onAddWeight, onUpdateWeight, onDeleteWeight
         </form>
       </section>
 
-      <!-- Analyse-Graph -->
       <section className="bg-slate-900 p-6 rounded-[32px] border border-slate-800 space-y-6">
         <div className="flex flex-col gap-4">
           <div className="flex justify-between items-center">
@@ -195,29 +197,14 @@ export const Weight = ({ weightLogs, onAddWeight, onUpdateWeight, onDeleteWeight
                 tick=${{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }}
                 interval="preserveStartEnd"
               />
-              <${YAxis} 
-                hide 
-                domain=${['dataMin - 1', 'dataMax + 1']} 
-              />
-              <${Tooltip} 
-                contentStyle=${{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', fontSize: '12px' }}
-                itemStyle=${{ color: '#10b981', fontWeight: 'bold' }}
-              />
-              <${Area} 
-                type="monotone" 
-                dataKey="value" 
-                stroke="#10b981" 
-                strokeWidth=${3} 
-                fillOpacity={1} 
-                fill="url(#colorWeight)" 
-                animationDuration=${1000}
-              />
+              <${YAxis} hide domain=${['dataMin - 1', 'dataMax + 1']} />
+              <${Tooltip} contentStyle=${{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', fontSize: '12px' }} itemStyle=${{ color: '#10b981', fontWeight: 'bold' }} />
+              <${Area} type="monotone" dataKey="value" stroke="#10b981" strokeWidth=${3} fillOpacity={1} fill="url(#colorWeight)" animationDuration=${1000} />
             <//>
           <//>
         </div>
       </section>
 
-      <!-- Wochen-Analyse -->
       <section className="space-y-3">
         <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Wochen-Durchschnitt</h3>
         <div className="space-y-3">
@@ -243,7 +230,6 @@ export const Weight = ({ weightLogs, onAddWeight, onUpdateWeight, onDeleteWeight
         </div>
       </section>
 
-      <!-- Alle Messungen -->
       <section className="space-y-3">
         <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Alle Messungen</h3>
         <div className="bg-slate-900 rounded-[28px] border border-slate-800 overflow-hidden divide-y divide-slate-800/50">
@@ -269,13 +255,13 @@ export const Weight = ({ weightLogs, onAddWeight, onUpdateWeight, onDeleteWeight
                   `}
                 </div>
               </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex gap-1 opacity-100 group-hover:opacity-100 transition-opacity">
                 ${editingId === w.id ? html`
                   <button onClick=${() => saveEdit(w)} className="p-3 text-emerald-500 bg-emerald-500/10 rounded-xl"><${Check} size=${18}/></button>
                   <button onClick=${() => setEditingId(null)} className="p-3 text-slate-500 bg-slate-800 rounded-xl"><${X} size=${18}/></button>
                 ` : html`
                   <button onClick=${() => startEditing(w)} className="p-3 text-slate-500 bg-slate-800 rounded-xl active:bg-slate-700 transition-colors"><${Edit2} size=${18}/></button>
-                  <button onClick=${() => onDeleteWeight(w.id)} className="p-3 text-red-500/50 bg-red-500/5 rounded-xl active:bg-red-500/10 transition-colors"><${Trash2} size=${18}/></button>
+                  <button type="button" onClick=${() => handleDelete(w.id)} className="p-3 text-red-500 bg-red-500/10 rounded-xl active:bg-red-500/20 transition-colors"><${Trash2} size=${18}/></button>
                 `}
               </div>
             </div>

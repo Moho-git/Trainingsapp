@@ -1,12 +1,25 @@
 
 import React, { useState, useEffect } from 'react';
 import htm from 'htm';
-import { Save, Plus, Check, ChevronLeft, Trash2, X, AlertTriangle, ChevronUp, ChevronDown, Minimize2, StickyNote, Edit2, Clock } from 'lucide-react';
+import { Save, Plus, Check, ChevronLeft, Trash2, X, AlertTriangle, ChevronUp, ChevronDown, Minimize2, StickyNote, Edit2 } from 'lucide-react';
 
 const html = htm.bind(React.createElement);
 const generateId = () => Math.random().toString(36).substring(2, 15);
 
-export const ActiveWorkout = ({ session, editingWorkout, allExercises, history, onUpdateSession, onFinish, onCancel, onAbortWorkout, onAddExercise, onUpdateTemplate }) => {
+export const ActiveWorkout = ({ 
+  session, 
+  activeWorkoutSession, 
+  editingWorkout, 
+  allExercises, 
+  history, 
+  onUpdateSession, 
+  onConfirmStart,
+  onFinish, 
+  onCancel, 
+  onAbortWorkout, 
+  onAddExercise, 
+  onUpdateTemplate 
+}) => {
   const [isStarted, setIsStarted] = useState(session ? session.isStarted : !!editingWorkout);
   const [exercises, setExercises] = useState(session ? session.exercises : []);
   const [sessionName, setSessionName] = useState(session?.name || editingWorkout?.name || 'Workout');
@@ -14,7 +27,6 @@ export const ActiveWorkout = ({ session, editingWorkout, allExercises, history, 
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [confirmState, setConfirmState] = useState('none');
   const [expandedNotes, setExpandedNotes] = useState({});
-  const [elapsedTime, setElapsedTime] = useState(0);
 
   useEffect(() => {
     if (editingWorkout) {
@@ -25,14 +37,6 @@ export const ActiveWorkout = ({ session, editingWorkout, allExercises, history, 
       setSessionName(editingWorkout.name);
     }
   }, [editingWorkout]);
-
-  useEffect(() => {
-    let timer;
-    if (isStarted && !editingWorkout) {
-      timer = setInterval(() => setElapsedTime(prev => prev + 1), 1000);
-    }
-    return () => clearInterval(timer);
-  }, [isStarted, editingWorkout]);
 
   useEffect(() => {
     if (!editingWorkout && session) {
@@ -46,15 +50,9 @@ export const ActiveWorkout = ({ session, editingWorkout, allExercises, history, 
       templateId: session?.templateId,
       name: sessionName,
       date: editingWorkout ? editingWorkout.date : new Date().toISOString(),
-      durationMinutes: Math.floor(elapsedTime / 60),
+      durationMinutes: 0,
       exercises: exercises.filter(ex => ex.sets.some(s => s.completed || s.weight > 0))
     });
-  };
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const getExerciseName = (id) => allExercises.find(e => e.id === id)?.name || id;
@@ -85,6 +83,20 @@ export const ActiveWorkout = ({ session, editingWorkout, allExercises, history, 
     persistTemplateUpdate(newName, exercises);
   };
 
+  const handleRequestStart = () => {
+    if (activeWorkoutSession && activeWorkoutSession.isStarted && activeWorkoutSession.sessionId !== session?.sessionId) {
+      setConfirmState('confirm_overwrite');
+    } else {
+      executeStart();
+    }
+  };
+
+  const executeStart = () => {
+    setIsStarted(true);
+    onConfirmStart(session);
+    setConfirmState('none');
+  };
+
   const updateSet = (exIdx, setIdx, field, value) => {
     const newEx = [...exercises];
     const set = newEx[exIdx].sets[setIdx];
@@ -110,7 +122,6 @@ export const ActiveWorkout = ({ session, editingWorkout, allExercises, history, 
     }
   };
 
-  // UI RENDERING
   return html`
     <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col pt-safe">
       
@@ -129,8 +140,7 @@ export const ActiveWorkout = ({ session, editingWorkout, allExercises, history, 
             <${Minimize2} size=${20} />
           </button>
           <div className="flex flex-col items-center flex-1 px-2">
-            <div className="text-emerald-400 font-black text-[10px] uppercase tracking-[0.2em] truncate w-full text-center">${sessionName}</div>
-            <div className="text-slate-500 font-mono text-xs flex items-center gap-1"><${Clock} size=${10} /> ${formatTime(elapsedTime)}</div>
+            <div className="text-emerald-400 font-black text-xs uppercase tracking-[0.2em] truncate w-full text-center">${sessionName}</div>
           </div>
           <button onClick=${() => setConfirmState('finish')} className="bg-emerald-600 text-white w-10 h-10 rounded-xl flex items-center justify-center active:scale-95 transition-all shadow-lg"><${Save} size=${20} /></button>
         </header>
@@ -166,7 +176,6 @@ export const ActiveWorkout = ({ session, editingWorkout, allExercises, history, 
         <!-- EXERCISE LIST -->
         ${exercises.map((ex, exIdx) => {
           if (!isStarted) {
-            // Compact Preparation View
             return html`
               <div key=${exIdx} className="flex items-center gap-2 bg-slate-900 p-2.5 rounded-xl border border-slate-800 shadow-sm transition-all">
                 <div className="flex flex-col shrink-0">
@@ -182,7 +191,6 @@ export const ActiveWorkout = ({ session, editingWorkout, allExercises, history, 
               </div>
             `;
           } else {
-            // Active Training View
             return html`
               <div key=${exIdx} className="bg-slate-900 rounded-[32px] border border-slate-800 overflow-hidden shadow-2xl mb-4">
                 <div className="px-5 py-4 bg-slate-800/30 border-b border-slate-800 flex justify-between items-center">
@@ -252,7 +260,7 @@ export const ActiveWorkout = ({ session, editingWorkout, allExercises, history, 
       <!-- FOOTER ACTIONS -->
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent pb-safe flex flex-col gap-2">
         ${!isStarted ? html`
-          <button onClick=${() => setIsStarted(true)} className="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black text-xl shadow-2xl active:scale-95 transition-all uppercase tracking-tighter">
+          <button onClick=${handleRequestStart} className="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black text-xl shadow-2xl active:scale-95 transition-all uppercase tracking-tighter">
             Training Starten
           </button>
         ` : html`
@@ -265,7 +273,7 @@ export const ActiveWorkout = ({ session, editingWorkout, allExercises, history, 
         `}
       </div>
 
-      <!-- ADD EXERCISE MODAL -->
+      <!-- MODALS -->
       ${showAddExercise && html`
         <div className="fixed inset-0 bg-black/90 z-[100] flex items-end animate-in fade-in duration-300">
           <div className="bg-slate-900 w-full rounded-t-[40px] max-h-[75vh] flex flex-col overflow-hidden border-t border-slate-800 shadow-2xl">
@@ -289,8 +297,23 @@ export const ActiveWorkout = ({ session, editingWorkout, allExercises, history, 
         </div>
       `}
 
-      <!-- CONFIRMATION MODAL -->
-      ${confirmState !== 'none' && html`
+      ${confirmState === 'confirm_overwrite' && html`
+        <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-8 backdrop-blur-sm animate-in zoom-in-95 duration-200">
+          <div className="bg-slate-900 p-8 rounded-[40px] w-full max-w-xs text-center border border-slate-800 shadow-2xl">
+            <div className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center bg-red-500/20 text-red-500">
+              <${AlertTriangle} size=${40} />
+            </div>
+            <h3 className="text-xl font-black text-white mb-2 uppercase tracking-tighter">Training läuft bereits</h3>
+            <p className="text-slate-500 text-xs mb-8 leading-relaxed">Möchtest du das aktuelle Training (${activeWorkoutSession?.name}) abbrechen und dieses neu starten?</p>
+            <div className="flex flex-col gap-3">
+              <button onClick=${executeStart} className="w-full py-4 rounded-2xl font-black text-white shadow-lg active:scale-95 transition-all bg-red-600">JA, ABBRECHEN & STARTEN</button>
+              <button onClick=${() => setConfirmState('none')} className="w-full py-4 bg-slate-800 text-slate-400 rounded-2xl font-black active:scale-95 transition-all">ZURÜCK</button>
+            </div>
+          </div>
+        </div>
+      `}
+
+      ${(confirmState === 'finish' || confirmState === 'abort') && html`
         <div className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-8 backdrop-blur-sm animate-in zoom-in-95 duration-200">
           <div className="bg-slate-900 p-8 rounded-[40px] w-full max-w-xs text-center border border-slate-800 shadow-2xl">
             <div className=${`w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center ${confirmState === 'abort' ? 'bg-red-500/20 text-red-500' : 'bg-emerald-500/20 text-emerald-500'}`}>
