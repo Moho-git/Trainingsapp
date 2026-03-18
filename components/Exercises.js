@@ -265,7 +265,7 @@ const ExerciseDetail = ({ exercise, history, onClose }) => {
     </div>
   `;
 };
-
+export { ExerciseDetail };
 export const Exercises = ({ exercises, history, onAdd, onUpdate, onDelete }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState(null);
