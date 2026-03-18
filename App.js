@@ -6,7 +6,7 @@ import { DEFAULT_EXERCISES, DEFAULT_TEMPLATES } from './constants.js';
 import { Dashboard } from './components/Dashboard.js';
 import { ActiveWorkout } from './components/ActiveWorkout.js';
 import { History } from './components/History.js';
-import { Exercises } from './components/Exercises.js';
+import { Exercises, ExerciseDetail } from './components/Exercises.js';
 import { Weight } from './components/Weight.js';
 
 const html = htm.bind(React.createElement);
@@ -54,6 +54,7 @@ const App = () => {
 
   const [viewingSession, setViewingSession] = useState(null);
   const [workoutToEdit, setWorkoutToEdit] = useState(null);
+  const [selectedExerciseDetail, setSelectedExerciseDetail] = useState(null);
 
   // WICHTIG: Initialize navigation state properly
   useEffect(() => {
@@ -184,6 +185,10 @@ const App = () => {
       inWorkout: false 
     }, '');
   };
+  const handleViewExerciseDetail = (exercise) => {
+    setSelectedExerciseDetail(exercise);
+    window.history.pushState({ view: 'exercise-detail' }, '');
+  };
 
   const handleTabChange = (newTab) => {
     setPreviousTab(activeTab);  // Speichern wo wir jetzt sind (für Falls wir zurückgehen)
@@ -245,6 +250,7 @@ const App = () => {
           return id;
         }}
         onUpdateTemplate=${(updatedTpl) => setTemplates(prev => prev.map(t => t.id === updatedTpl.id ? updatedTpl : t))}
+        onViewExerciseDetail=${handleViewExerciseDetail}
       />`;
     }
 
@@ -338,6 +344,13 @@ const App = () => {
               </div>
             </div>
           </div>
+        `}
+        ${selectedExerciseDetail && html`
+          <${ExerciseDetail} 
+            exercise=${selectedExerciseDetail} 
+            history=${history} 
+              onClose=${() => setSelectedExerciseDetail(null)} 
+           />
         `}
       </div>
     `;
