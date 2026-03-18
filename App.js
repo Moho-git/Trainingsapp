@@ -204,7 +204,9 @@ const App = () => {
 
   const renderActiveView = () => {
     if (isViewingActiveWorkout || workoutToEdit) {
-      return html`<${ActiveWorkout}
+  return html`
+    <div>
+      <${ActiveWorkout}
         session=${viewingSession}
         activeWorkoutSession=${activeWorkoutSession}
         editingWorkout=${workoutToEdit}
@@ -222,27 +224,16 @@ const App = () => {
         }}
         onFinish=${handleFinishWorkout}
         onCancel=${() => { 
-          // Workout schließen: Ersetze Workout-State mit Dashboard-State
           setIsViewingActiveWorkout(false); 
           setViewingSession(null); 
           setWorkoutToEdit(null);
-          // replaceState ersetzt den aktuellen State, statt einen neuen zu pushen
-          window.history.replaceState({ 
-            screen: 'dashboard',
-            tab: activeTab,
-            inWorkout: false 
-          }, '');
+          window.history.replaceState({ screen: 'dashboard', tab: activeTab, inWorkout: false }, '');
         }}
         onAbortWorkout=${() => { 
           setActiveWorkoutSession(null);
           setViewingSession(null);
           setIsViewingActiveWorkout(false);
-          // replaceState ersetzt den aktuellen State, statt einen neuen zu pushen
-          window.history.replaceState({ 
-            screen: 'dashboard',
-            tab: activeTab,
-            inWorkout: false 
-          }, '');
+          window.history.replaceState({ screen: 'dashboard', tab: activeTab, inWorkout: false }, '');
         }}
         onAddExercise=${(newEx) => {
           const id = 'ex_' + Date.now();
@@ -251,8 +242,17 @@ const App = () => {
         }}
         onUpdateTemplate=${(updatedTpl) => setTemplates(prev => prev.map(t => t.id === updatedTpl.id ? updatedTpl : t))}
         onViewExerciseDetail=${handleViewExerciseDetail}
-      />`;
-    }
+      />
+      ${selectedExerciseDetail && html`
+        <${ExerciseDetail} 
+          exercise=${selectedExerciseDetail} 
+          history=${history} 
+          onClose=${() => setSelectedExerciseDetail(null)} 
+        />
+      `}
+    </div>
+  `;
+}
 
     return html`
       <div className="min-h-screen bg-slate-950 text-slate-100 pb-24">
