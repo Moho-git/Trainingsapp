@@ -269,7 +269,7 @@ const ExerciseDetail = ({ exercise, history, onClose }) => {
 export const Exercises = ({ exercises, history, onAdd, onUpdate, onDelete }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [selectedExerciseForDetail, setSelectedExerciseForDetail] = useState<Exercise | null>(null);
+  const [selectedExerciseForDetail, setSelectedExerciseForDetail] = useState(null);
   const [newEx, setNewEx] = useState({ name: '', category: 'Brust' });
   const [editEx, setEditEx] = useState({ name: '', category: '' });
   const [searchTerm, setSearchTerm] = useState('');
@@ -377,7 +377,7 @@ export const Exercises = ({ exercises, history, onAdd, onUpdate, onDelete }) => 
                 <div 
                   key=${ex.id} 
                   onClick=${() => {
-                    setSelectedExForDetail(ex);
+                    setSelectedExerciseForDetail(ex);
                     window.history.pushState({ view: 'exercise-detail' }, '');
                   }}
                   className="bg-slate-900 border border-slate-800 rounded-[28px] p-5 flex items-center justify-between group active:scale-[0.98] transition-all cursor-pointer shadow-lg"
@@ -433,11 +433,11 @@ export const Exercises = ({ exercises, history, onAdd, onUpdate, onDelete }) => 
         `)}
       </div>
 
-      ${selectedExForDetail && html`
+      ${selectedExerciseForDetail && html`
         <${ExerciseDetail} 
-          exercise=${selectedExForDetail} 
+          exercise=${selectedExerciseForDetail} 
           history=${history} 
-          onClose=${() => setSelectedExForDetail(null)} 
+          onClose=${() => setSelectedExerciseForDetail(null)} 
         />
       `}
     </div>
