@@ -13,6 +13,7 @@ const html = htm.bind(React.createElement);
 
 const App = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [previousTab, setPreviousTab] = useState('dashboard'); // Track wo wir herkommen
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [isViewingActiveWorkout, setIsViewingActiveWorkout] = useState(false);
   
@@ -64,57 +65,49 @@ const App = () => {
     }, '');
   }, []);
 
-  // BESSERE BACK-BUTTON LOGIK mit mehreren Ebenen
+  // BESSERE BACK-BUTTON LOGIK - Checke Browser-State, nicht React-State!
   useEffect(() => {
     const handlePopState = (event) => {
       const state = event.state || {};
+      
+      console.log('🔙 Browser Back Button gedrückt. State:', state);
 
-      // EBENE 1: Im aktiven Workout → Schließe Workout
+      // EBENE 1: Wenn Browser-State sagt inWorkout === true, aber React-State ist false
+      // = Wir sind gerade aus dem Workout raus, gehen zum vorherigen State
+      if (state.inWorkout === true && !isViewingActiveWorkout) {
+        console.log('🔙 Back: Aus Workout-Mode');
+        setActiveTab(state.tab || previousTab);
+        return;
+      }
+
+      // EBENE 2: Wenn wir noch im Workout sind (React-State)
       if (isViewingActiveWorkout || workoutToEdit) {
         console.log('🔙 Back: Schließe Workout/Edit-Modus');
         setIsViewingActiveWorkout(false);
         setViewingSession(null);
         setWorkoutToEdit(null);
-        
-        // Push state zurück zur vorherigen Ansicht
-        window.history.pushState({ 
-          screen: 'dashboard',
-          tab: activeTab,
-          inWorkout: false 
-        }, '');
         return;
       }
 
-      // EBENE 2: In einem Sub-Tab (nicht Dashboard) → Gehe zu Dashboard
-      if (activeTab !== 'dashboard') {
+      // EBENE 3: In einem Sub-Tab (nicht Dashboard)
+      if (state.tab !== 'dashboard' && activeTab !== 'dashboard') {
         console.log('🔙 Back: Von Sub-Tab zum Dashboard');
         setActiveTab('dashboard');
-        
-        window.history.pushState({ 
-          screen: 'dashboard',
-          tab: 'dashboard',
-          inWorkout: false 
-        }, '');
+        setPreviousTab('dashboard');
         return;
       }
 
-      // EBENE 3: Im Dashboard → Zeige Exit-Bestätigung
-      if (activeTab === 'dashboard' && !isViewingActiveWorkout) {
+      // EBENE 4: Im Dashboard → Zeige Exit-Bestätigung
+      if (state.tab === 'dashboard' && activeTab === 'dashboard' && !isViewingActiveWorkout) {
         console.log('🔙 Back: Auf Dashboard - Exit-Bestätigung zeigen');
         setShowExitConfirm(true);
-        
-        // Push state wieder, damit nächster Back-Click registriert wird
-        window.history.pushState({ 
-          screen: 'dashboard',
-          tab: 'dashboard',
-          inWorkout: false 
-        }, '');
+        window.history.pushState({ tab: 'dashboard', inWorkout: false }, '');
       }
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [activeTab, isViewingActiveWorkout, workoutToEdit]);
+  }, [activeTab, previousTab, isViewingActiveWorkout, workoutToEdit]);
 
   // Persistence Effects
   useEffect(() => { localStorage.setItem('kraftlog_history', JSON.stringify(history)); }, [history]);
@@ -149,6 +142,7 @@ const App = () => {
   const handleStartWorkoutTemplate = (templateId) => {
     const template = templates.find(t => t.id === templateId);
     if (template) {
+      setPreviousTab(activeTab);  // Speichern wo wir waren
       const newPreparation = {
         sessionId: Math.random().toString(36).substring(2, 15),
         templateId: template.id,
@@ -192,6 +186,7 @@ const App = () => {
   };
 
   const handleTabChange = (newTab) => {
+    setPreviousTab(activeTab);  // Speichern wo wir jetzt sind (für Falls wir zurückgehen)
     setActiveTab(newTab);
     
     // History-State updaten wenn Tab wechselt
@@ -222,16 +217,27 @@ const App = () => {
         }}
         onFinish=${handleFinishWorkout}
         onCancel=${() => { 
+          // Workout schließen: Ersetze Workout-State mit Dashboard-State
           setIsViewingActiveWorkout(false); 
           setViewingSession(null); 
-          setWorkoutToEdit(null); 
-          window.history.back();
+          setWorkoutToEdit(null);
+          // replaceState ersetzt den aktuellen State, statt einen neuen zu pushen
+          window.history.replaceState({ 
+            screen: 'dashboard',
+            tab: activeTab,
+            inWorkout: false 
+          }, '');
         }}
         onAbortWorkout=${() => { 
           setActiveWorkoutSession(null);
           setViewingSession(null);
-          setIsViewingActiveWorkout(false); 
-          window.history.back();
+          setIsViewingActiveWorkout(false);
+          // replaceState ersetzt den aktuellen State, statt einen neuen zu pushen
+          window.history.replaceState({ 
+            screen: 'dashboard',
+            tab: activeTab,
+            inWorkout: false 
+          }, '');
         }}
         onAddExercise=${(newEx) => {
           const id = 'ex_' + Date.now();
@@ -255,7 +261,7 @@ const App = () => {
               onContinueWorkout=${() => {
                 setViewingSession(activeWorkoutSession);
                 setIsViewingActiveWorkout(true);
-                window.history.pushState({ screen: 'workout', inWorkout: true }, '');
+                window.history.pushState({ screen: 'workout', tab: activeTab, inWorkout: true }, '');
               }}
               onAbortActiveSession=${abortActiveSession}
               onAddWeight=${(w, d) => setWeightLogs(prev => [...prev, { id: 'w_'+Date.now()+'_'+Math.random(), date: d || new Date().toISOString(), value: parseFloat(w) }].sort((a,b) => new Date(a.date)-new Date(b.date)))}
