@@ -276,8 +276,31 @@ const App = () => {
               onUpdateTemplate=${(t) => setTemplates(prev => prev.map(old => old.id === t.id ? t : old))}
               onDeleteTemplate=${(id) => { if(confirm("Löschen?")) setTemplates(prev => prev.filter(t => t.id !== id)) }}
               onImportBackup=${(backup) => {
-                 if (backup.history) setHistory(prev => [...backup.history, ...prev.filter(w => !backup.history.find(bh => bh.id === w.id))]);
-                 alert("Import erfolgreich");
+                if (backup.history) {
+                  setHistory(prev => [
+                    ...backup.history,
+                    ...prev.filter(w => !backup.history.find(bh => bh.id === w.id))
+                  ].sort((a, b) => new Date(b.date) - new Date(a.date)));
+                }
+                if (backup.exercises) {
+                  setExercises(prev => [
+                    ...prev.filter(e => !backup.exercises.find(be => be.id === e.id)),
+                    ...backup.exercises
+                  ]);
+                }
+                if (backup.templates) {
+                  setTemplates(prev => [
+                    ...prev.filter(t => !backup.templates.find(bt => bt.id === t.id)),
+                    ...backup.templates
+                  ]);
+                }
+                if (backup.weightLogs) {
+                  setWeightLogs(prev => [
+                    ...backup.weightLogs,
+                    ...prev.filter(w => !backup.weightLogs.find(bw => bw.id === w.id))
+                  ].sort((a, b) => new Date(a.date) - new Date(b.date)));
+                }
+                alert("Import erfolgreich");
               }}
             />
           `}
