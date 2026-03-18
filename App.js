@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import htm from 'htm';
 import { LayoutDashboard, History as HistoryIcon, Dumbbell, Scale, LogOut, AlertTriangle, Play, Activity, X } from 'lucide-react';
@@ -55,40 +54,61 @@ const App = () => {
   const [viewingSession, setViewingSession] = useState(null);
   const [workoutToEdit, setWorkoutToEdit] = useState(null);
 
-  // Initialize history state on mount
+  // WICHTIG: Initialize navigation state properly
   useEffect(() => {
-    window.history.replaceState({ tab: 'dashboard' }, '');
+    // Clear any previous history
+    window.history.replaceState({ 
+      screen: 'dashboard',
+      tab: 'dashboard',
+      inWorkout: false 
+    }, '');
   }, []);
 
-  // Sync tabs with history
-  useEffect(() => {
-    if (!isViewingActiveWorkout && !workoutToEdit) {
-      window.history.pushState({ tab: activeTab }, '');
-    }
-  }, [activeTab]);
-
-  // Global Back Button Handler
+  // BESSERE BACK-BUTTON LOGIK mit mehreren Ebenen
   useEffect(() => {
     const handlePopState = (event) => {
-      // If we are currently in a workout or editing, close it
+      const state = event.state || {};
+
+      // EBENE 1: Im aktiven Workout → Schließe Workout
       if (isViewingActiveWorkout || workoutToEdit) {
+        console.log('🔙 Back: Schließe Workout/Edit-Modus');
         setIsViewingActiveWorkout(false);
         setViewingSession(null);
         setWorkoutToEdit(null);
+        
+        // Push state zurück zur vorherigen Ansicht
+        window.history.pushState({ 
+          screen: 'dashboard',
+          tab: activeTab,
+          inWorkout: false 
+        }, '');
         return;
       }
 
-      // If we are in a sub-tab, go back to dashboard
+      // EBENE 2: In einem Sub-Tab (nicht Dashboard) → Gehe zu Dashboard
       if (activeTab !== 'dashboard') {
+        console.log('🔙 Back: Von Sub-Tab zum Dashboard');
         setActiveTab('dashboard');
+        
+        window.history.pushState({ 
+          screen: 'dashboard',
+          tab: 'dashboard',
+          inWorkout: false 
+        }, '');
         return;
       }
 
-      // If on dashboard, show exit confirmation
-      if (activeTab === 'dashboard') {
+      // EBENE 3: Im Dashboard → Zeige Exit-Bestätigung
+      if (activeTab === 'dashboard' && !isViewingActiveWorkout) {
+        console.log('🔙 Back: Auf Dashboard - Exit-Bestätigung zeigen');
         setShowExitConfirm(true);
-        // Push state again so the next "back" can be caught again or actually close the app
-        window.history.pushState({ tab: 'dashboard' }, '');
+        
+        // Push state wieder, damit nächster Back-Click registriert wird
+        window.history.pushState({ 
+          screen: 'dashboard',
+          tab: 'dashboard',
+          inWorkout: false 
+        }, '');
       }
     };
 
@@ -141,7 +161,13 @@ const App = () => {
       };
       setViewingSession(newPreparation);
       setIsViewingActiveWorkout(true);
-      window.history.pushState({ page: 'workout_prep' }, '');
+      
+      // WICHTIG: History-State beim Wechsel updaten
+      window.history.pushState({ 
+        screen: 'workout',
+        tab: activeTab,
+        inWorkout: true 
+      }, '');
     }
   };
 
@@ -156,6 +182,24 @@ const App = () => {
     }
     setIsViewingActiveWorkout(false);
     setActiveTab('history');
+    
+    // History-State aktualisieren
+    window.history.pushState({ 
+      screen: 'dashboard',
+      tab: 'history',
+      inWorkout: false 
+    }, '');
+  };
+
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    
+    // History-State updaten wenn Tab wechselt
+    window.history.pushState({ 
+      screen: 'dashboard',
+      tab: newTab,
+      inWorkout: false 
+    }, '');
   };
 
   const renderActiveView = () => {
@@ -211,7 +255,7 @@ const App = () => {
               onContinueWorkout=${() => {
                 setViewingSession(activeWorkoutSession);
                 setIsViewingActiveWorkout(true);
-                window.history.pushState({ page: 'workout' }, '');
+                window.history.pushState({ screen: 'workout', inWorkout: true }, '');
               }}
               onAbortActiveSession=${abortActiveSession}
               onAddWeight=${(w, d) => setWeightLogs(prev => [...prev, { id: 'w_'+Date.now()+'_'+Math.random(), date: d || new Date().toISOString(), value: parseFloat(w) }].sort((a,b) => new Date(a.date)-new Date(b.date)))}
@@ -247,26 +291,26 @@ const App = () => {
               history=${history} 
               exercises=${exercises}
               onDeleteWorkout=${deleteWorkout}
-              onEditWorkout=${(w) => { setWorkoutToEdit(w); window.history.pushState({page:'edit'}, ''); }}
+              onEditWorkout=${(w) => { setWorkoutToEdit(w); window.history.pushState({screen:'edit', inWorkout: true}, ''); }}
             />
           `}
         </div>
 
         <nav className="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 pb-safe z-40 h-16 shadow-2xl">
           <div className="flex justify-around items-center h-full max-w-md mx-auto">
-            <button onClick=${() => setActiveTab('dashboard')} className=${`flex flex-col items-center gap-1 w-1/4 ${activeTab === 'dashboard' ? 'text-emerald-400' : 'text-slate-500'}`}>
+            <button onClick=${() => handleTabChange('dashboard')} className=${`flex flex-col items-center gap-1 w-1/4 ${activeTab === 'dashboard' ? 'text-emerald-400' : 'text-slate-500'}`}>
               <${LayoutDashboard} size=${20} />
               <span className="text-[10px] font-bold">Training</span>
             </button>
-            <button onClick=${() => setActiveTab('exercises')} className=${`flex flex-col items-center gap-1 w-1/4 ${activeTab === 'exercises' ? 'text-emerald-400' : 'text-slate-500'}`}>
+            <button onClick=${() => handleTabChange('exercises')} className=${`flex flex-col items-center gap-1 w-1/4 ${activeTab === 'exercises' ? 'text-emerald-400' : 'text-slate-500'}`}>
               <${Dumbbell} size=${20} />
               <span className="text-[10px] font-bold">Übungen</span>
             </button>
-            <button onClick=${() => setActiveTab('weight')} className=${`flex flex-col items-center gap-1 w-1/4 ${activeTab === 'weight' ? 'text-emerald-400' : 'text-slate-500'}`}>
+            <button onClick=${() => handleTabChange('weight')} className=${`flex flex-col items-center gap-1 w-1/4 ${activeTab === 'weight' ? 'text-emerald-400' : 'text-slate-500'}`}>
               <${Scale} size=${20} />
               <span className="text-[10px] font-bold">Gewicht</span>
             </button>
-            <button onClick=${() => setActiveTab('history')} className=${`flex flex-col items-center gap-1 w-1/4 ${activeTab === 'history' ? 'text-emerald-400' : 'text-slate-500'}`}>
+            <button onClick=${() => handleTabChange('history')} className=${`flex flex-col items-center gap-1 w-1/4 ${activeTab === 'history' ? 'text-emerald-400' : 'text-slate-500'}`}>
               <${HistoryIcon} size=${20} />
               <span className="text-[10px] font-bold">Verlauf</span>
             </button>
