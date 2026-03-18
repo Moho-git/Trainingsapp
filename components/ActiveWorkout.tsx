@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CompletedWorkout, Exercise, WorkoutExercise, WorkoutSet, WorkoutTemplate } from '../types';
-import { Save, Plus, Check, Clock, ChevronLeft, History as HistoryIcon, Play, Trash2, X, AlertTriangle, ArrowUpRight } from 'lucide-react';
+import { Save, Plus, Check, Clock, ChevronLeft, History as HistoryIcon, Play, Trash2, X, AlertTriangle, ArrowUpRight, Info } from 'lucide-react';
 
 interface ActiveWorkoutProps {
   template: WorkoutTemplate;
@@ -8,6 +8,7 @@ interface ActiveWorkoutProps {
   history: CompletedWorkout[];
   onFinish: (workout: CompletedWorkout) => void;
   onCancel: () => void;
+  onViewExerciseDetail?: (exercise: Exercise) => void;
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 15);
@@ -17,7 +18,8 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
   allExercises,
   history,
   onFinish,
-  onCancel
+  onCancel,
+  onViewExerciseDetail
 }) => {
   const [isStarted, setIsStarted] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -51,6 +53,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
   };
 
   const getExerciseName = (id: string) => allExercises.find(e => e.id === id)?.name || 'Übung';
+  const getExerciseObject = (id: string) => allExercises.find(e => e.id === id);
 
   const getLastSessionData = (exerciseId: string) => {
     const prevWorkout = history.find(w => w.exercises.some(e => e.exerciseId === exerciseId));
@@ -93,6 +96,13 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
       exercises: exercises.filter(ex => ex.sets.some(s => s.weight > 0 || s.reps > 0 || s.completed))
     };
     onFinish(workout);
+  };
+
+  const handleExerciseClick = (exerciseId: string) => {
+    const exerciseObj = getExerciseObject(exerciseId);
+    if (exerciseObj && onViewExerciseDetail) {
+      onViewExerciseDetail(exerciseObj);
+    }
   };
 
   if (!isStarted) {
@@ -196,13 +206,19 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
             const lastData = getLastSessionData(ex.exerciseId);
             return (
                 <div key={exIndex} className="bg-slate-900 rounded-[32px] border border-slate-800 overflow-hidden shadow-xl">
-                  <div className="p-6 border-b border-slate-800 bg-slate-800/30">
-                    <h3 className="text-xl font-bold text-slate-100 mb-1">{getExerciseName(ex.exerciseId)}</h3>
-                    {lastData && (
-                        <div className="flex items-center gap-2 text-blue-400 text-xs font-semibold bg-blue-950/30 px-3 py-1.5 rounded-full w-fit">
-                            <HistoryIcon size={12} /> Letztes Mal: {lastData.sets[0]?.weight}kg x {lastData.sets[0]?.reps}
-                        </div>
-                    )}
+                  <div 
+                    onClick={() => handleExerciseClick(ex.exerciseId)}
+                    className="p-6 border-b border-slate-800 bg-slate-800/30 cursor-pointer hover:bg-slate-800/50 transition-colors flex justify-between items-start group"
+                  >
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-slate-100 mb-1 group-hover:text-emerald-400 transition-colors">{getExerciseName(ex.exerciseId)}</h3>
+                      {lastData && (
+                          <div className="flex items-center gap-2 text-blue-400 text-xs font-semibold bg-blue-950/30 px-3 py-1.5 rounded-full w-fit">
+                              <HistoryIcon size={12} /> Letztes Mal: {lastData.sets[0]?.weight}kg x {lastData.sets[0]?.reps}
+                          </div>
+                      )}
+                    </div>
+                    <Info className="w-5 h-5 text-slate-600 group-hover:text-emerald-500 transition-colors shrink-0 ml-2" />
                   </div>
                   <div className="p-5 space-y-4">
                       {ex.sets.map((set, setIndex) => {
@@ -223,7 +239,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                                       <input type="number" inputMode="numeric" value={set.reps || ''} placeholder="Wdh" onChange={(e) => updateSet(exIndex, setIndex, 'reps', e.target.value)} className="w-full bg-slate-800 text-center text-white py-4 rounded-xl border border-slate-700 outline-none font-black" />
                                     </div>
                                     <div className="col-span-2">
-                                       <input type="number" inputMode="numeric" value={set.rpe || ''} placeholder="RIR" onChange={(e) => updateSet(exIndex, setIndex, 'rpe', e.target.value)} className="w-full bg-slate-800 text-center text-slate-400 py-4 rounded-xl border border-slate-700 outline-none text-xs" />
+                                       <input type="number" inputMode="numeric" value={set.rpe || ''} placeholder="RPE" onChange={(e) => updateSet(exIndex, setIndex, 'rpe', e.target.value)} className="w-full bg-slate-800 text-center text-slate-400 py-4 rounded-xl border border-slate-700 outline-none text-xs" />
                                     </div>
                                     <div className="col-span-2 flex justify-end">
                                       <button onClick={() => updateSet(exIndex, setIndex, 'completed', !set.completed)} className={`w-12 h-12 flex items-center justify-center rounded-2xl active:scale-75 transition-all shadow-md ${set.completed ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-700'}`}>
