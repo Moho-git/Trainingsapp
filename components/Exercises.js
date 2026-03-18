@@ -269,7 +269,7 @@ const ExerciseDetail = ({ exercise, history, onClose }) => {
 export const Exercises = ({ exercises, history, onAdd, onUpdate, onDelete }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [selectedExForDetail, setSelectedExForDetail] = useState(null);
+  const [selectedExerciseForDetail, setSelectedExerciseForDetail] = useState<Exercise | null>(null);
   const [newEx, setNewEx] = useState({ name: '', category: 'Brust' });
   const [editEx, setEditEx] = useState({ name: '', category: '' });
   const [searchTerm, setSearchTerm] = useState('');
