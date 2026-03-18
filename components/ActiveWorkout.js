@@ -18,7 +18,8 @@ export const ActiveWorkout = ({
   onCancel, 
   onAbortWorkout, 
   onAddExercise, 
-  onUpdateTemplate 
+  onUpdateTemplate, 
+  onViewExerciseDetail
 }) => {
   const [isStarted, setIsStarted] = useState(session ? session.isStarted : !!editingWorkout);
   const [exercises, setExercises] = useState(session ? session.exercises : []);
@@ -208,9 +209,12 @@ export const ActiveWorkout = ({
           } else {
             return html`
               <div key=${exIdx} className="bg-slate-900 rounded-[32px] border border-slate-800 overflow-hidden shadow-2xl mb-4">
-                <div className="px-5 py-4 bg-slate-800/30 border-b border-slate-800 flex justify-between items-center">
+                <div 
+                  onClick=${() => onViewExerciseDetail && onViewExerciseDetail(allExercises.find(e => e.id === ex.exerciseId))}
+                  className="px-5 py-4 bg-slate-800/30 border-b border-slate-800 flex justify-between items-center cursor-pointer hover:bg-slate-700/50 transition-colors"
+                >
                   <div>
-                    <h3 className="text-sm font-black text-slate-100 uppercase tracking-tight truncate mr-2">${getExerciseName(ex.exerciseId)}</h3>
+                    <h3 className="text-sm font-black text-slate-100 uppercase tracking-tight truncate mr-2 hover:text-emerald-400 transition-colors">${getExerciseName(ex.exerciseId)}</h3>
                     ${lastData && html`
                       <p className="text-[9px] font-bold text-emerald-500/40 flex items-center gap-1 mt-0.5 uppercase tracking-tighter">
                          Peak: ${Math.max(...lastData.sets.map(s => s.weight))}kg
