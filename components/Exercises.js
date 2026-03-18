@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import htm from 'htm';
 import { Plus, Edit2, Trash2, Check, X, Search, TrendingUp, Calendar, Target, Activity, ListFilter, Award, Zap } from 'lucide-react';
@@ -9,15 +8,15 @@ const html = htm.bind(React.createElement);
 const CATEGORIES = ['Brust', 'Rücken', 'Beine', 'Arme', 'Bauch', 'Schultern'];
 
 const ExerciseDetail = ({ exercise, history, onClose }) => {
-  const [historyLimit, setHistoryLimit] = useState(10);  // ← NEUE ZEILE
-  
+  const [historyLimit, setHistoryLimit] = useState(10);
+
   // Listen for popstate to close detail view via back button
   useEffect(() => {
     const handleBack = () => onClose();
     window.addEventListener('popstate', handleBack);
     return () => window.removeEventListener('popstate', handleBack);
   }, [onClose]);
-  
+
   const exerciseHistory = useMemo(() => {
     const data = [];
     history.forEach(workout => {
@@ -182,37 +181,37 @@ const ExerciseDetail = ({ exercise, history, onClose }) => {
             </div>
           </div>
 
-         <!-- SESSION HISTORY WITH ALIGNED SET COMPARISON -->
-<section className="space-y-4">
-   <div className="flex items-center justify-between px-1">
-      <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Session Vergleich</h3>
-      <div className="flex gap-2">
-         <button 
-            onClick=${() => setHistoryLimit(10)}
-            className=${`text-[9px] font-black px-2 py-1 rounded-lg transition-all ${historyLimit === 10 ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-500'}`}
-         >
-            10
-         </button>
-         <button 
-            onClick=${() => setHistoryLimit(100)}
-            className=${`text-[9px] font-black px-2 py-1 rounded-lg transition-all ${historyLimit === 100 ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-500'}`}
-         >
-            100
-         </button>
-         <button 
-            onClick=${() => setHistoryLimit(0)}
-            className=${`text-[9px] font-black px-2 py-1 rounded-lg transition-all ${historyLimit === 0 ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-500'}`}
-         >
-            Alle
-         </button>
-      </div>
-   </div>
+          <!-- SESSION HISTORY WITH ALIGNED SET COMPARISON -->
+          <section className="space-y-4">
+             <div className="flex items-center justify-between px-1">
+                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Session Vergleich</h3>
+                <div className="flex gap-2">
+                  <button 
+                    onClick=${() => setHistoryLimit(10)}
+                    className=${`text-[9px] font-black px-2.5 py-1 rounded-lg transition-all border ${historyLimit === 10 ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-800 text-slate-400 border-slate-700'}`}
+                  >
+                    10
+                  </button>
+                  <button 
+                    onClick=${() => setHistoryLimit(100)}
+                    className=${`text-[9px] font-black px-2.5 py-1 rounded-lg transition-all border ${historyLimit === 100 ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-800 text-slate-400 border-slate-700'}`}
+                  >
+                    100
+                  </button>
+                  <button 
+                    onClick=${() => setHistoryLimit(0)}
+                    className=${`text-[9px] font-black px-2.5 py-1 rounded-lg transition-all border ${historyLimit === 0 ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-800 text-slate-400 border-slate-700'}`}
+                  >
+                    Alle
+                  </button>
+                </div>
+             </div>
              
              <div className="space-y-4">
-               ${Object.keys(stats.groupedByDate)
-   .sort((a,b) => new Date(b) - new Date(a))
-   .slice(0, historyLimit === 0 ? undefined : historyLimit)  // ← DIESE ZEILE
-   .map(date => {
+                ${Object.keys(stats.groupedByDate)
+                  .sort((a,b) => new Date(b) - new Date(a))
+                  .slice(0, historyLimit === 0 ? undefined : historyLimit)
+                  .map(date => {
                   const daySets = stats.groupedByDate[date];
                   return html`
                     <div key=${date} className="bg-slate-900 rounded-[32px] border border-slate-800 overflow-hidden shadow-lg">
