@@ -22,7 +22,7 @@ export const ActiveWorkout = ({
 }) => {
   const [isStarted, setIsStarted] = useState(session ? session.isStarted : !!editingWorkout);
 
-  // ✨ Pre-fill sets with last session's weight/reps
+  // ✨ Pre-fill sets with last session's weight/reps, mark as prefill
   const [exercises, setExercises] = useState(() => {
     if (!session) return [];
     return session.exercises.map(ex => {
@@ -37,6 +37,7 @@ export const ActiveWorkout = ({
           weight: lastSet.weight || 0,
           reps: lastSet.reps || 0,
           rir: lastSet.rir || 0,
+          isPrefill: true,   // grayed out until user confirms
         }))
       };
     });
@@ -144,6 +145,8 @@ export const ActiveWorkout = ({
   const updateSet = (exIdx, setIdx, field, value) => {
     const newEx = [...exercises];
     const set = newEx[exIdx].sets[setIdx];
+    // ✨ Any user interaction confirms the prefill
+    set.isPrefill = false;
     if (field === 'completed') {
       set.completed = value;
     } else if (field === 'note') {
@@ -302,6 +305,7 @@ export const ActiveWorkout = ({
                     const prevSet = lastData?.sets[setIdx];
                     // ✨ PR: weight strictly beats all-time best (and we have history to compare)
                     const isPR = set.completed && set.weight > 0 && prRecord > 0 && set.weight > prRecord;
+                    const prefill = !!set.isPrefill;
                     return html`
                     <div key=${set.id} className="space-y-1">
                       ${prevSet && html`
@@ -313,23 +317,40 @@ export const ActiveWorkout = ({
                         isPR            ? 'bg-amber-500/10 border-amber-400/50 shadow-[0_0_12px_rgba(251,191,36,0.15)]' :
                         set.completed   ? 'bg-emerald-600/10 border-emerald-500/30' :
                         hasNote         ? 'bg-red-500/5 border-red-500/40 shadow-[0_0_10px_rgba(239,68,68,0.1)]' :
+                        prefill         ? 'bg-slate-950/20 border-slate-800/50' :
                                           'bg-slate-950/40 border-slate-800'
                       }`}>
-                        <!-- ✨ Set number or PR trophy -->
+                        <!-- Set number or PR trophy -->
                         <div className="col-span-1 flex items-center justify-center text-[9px] font-black">
                           ${isPR
                             ? html`<span className="text-base leading-none" title="Neuer Persönlicher Rekord!">🏆</span>`
                             : html`<span className="text-slate-700">${setIdx + 1}</span>`
                           }
                         </div>
+                        <!-- ✨ Inputs: grayed out text + italic when prefill, normal when confirmed -->
                         <div className="col-span-3">
-                          <input type="number" step="0.5" inputMode="decimal" value=${set.weight || ''} placeholder="kg" onChange=${e => updateSet(exIdx, setIdx, 'weight', e.target.value)} className="w-full bg-slate-800 text-center py-3 rounded-xl border border-slate-700 font-black text-sm text-white outline-none focus:border-emerald-500 transition-all" />
+                          <input type="number" step="0.5" inputMode="decimal"
+                            value=${set.weight || ''}
+                            placeholder="kg"
+                            onChange=${e => updateSet(exIdx, setIdx, 'weight', e.target.value)}
+                            className=${`w-full bg-slate-800 text-center py-3 rounded-xl border border-slate-700 outline-none focus:border-emerald-500 transition-all font-black text-sm ${prefill ? 'text-slate-500 italic' : 'text-white'}`}
+                          />
                         </div>
                         <div className="col-span-3">
-                          <input type="number" inputMode="numeric" value=${set.reps || ''} placeholder="Wdh" onChange=${e => updateSet(exIdx, setIdx, 'reps', e.target.value)} className="w-full bg-slate-800 text-center py-3 rounded-xl border border-slate-700 font-black text-sm text-white outline-none focus:border-emerald-500 transition-all" />
+                          <input type="number" inputMode="numeric"
+                            value=${set.reps || ''}
+                            placeholder="Wdh"
+                            onChange=${e => updateSet(exIdx, setIdx, 'reps', e.target.value)}
+                            className=${`w-full bg-slate-800 text-center py-3 rounded-xl border border-slate-700 outline-none focus:border-emerald-500 transition-all font-black text-sm ${prefill ? 'text-slate-500 italic' : 'text-white'}`}
+                          />
                         </div>
                         <div className="col-span-1">
-                          <input type="number" inputMode="numeric" value=${set.rir === 0 ? '' : set.rir} placeholder="R" onChange=${e => updateSet(exIdx, setIdx, 'rir', e.target.value)} className="w-full bg-slate-800 text-center py-3 rounded-xl border border-slate-700 text-[10px] text-slate-400 font-bold outline-none" />
+                          <input type="number" inputMode="numeric"
+                            value=${set.rir === 0 ? '' : set.rir}
+                            placeholder="R"
+                            onChange=${e => updateSet(exIdx, setIdx, 'rir', e.target.value)}
+                            className=${`w-full bg-slate-800 text-center py-3 rounded-xl border border-slate-700 font-bold outline-none text-[10px] ${prefill ? 'text-slate-600' : 'text-slate-400'}`}
+                          />
                         </div>
                         <div className="col-span-4 flex justify-end items-center gap-0.5">
                           <button onClick=${() => removeSet(exIdx, setIdx)} className="w-7 h-9 flex items-center justify-center text-red-500/20 active:text-red-500 transition-colors">
@@ -338,10 +359,11 @@ export const ActiveWorkout = ({
                           <button onClick=${() => toggleNote(set.id)} className=${`w-8 h-10 flex items-center justify-center rounded-xl transition-all ${hasNote ? 'text-white bg-red-600 shadow-lg' : 'text-slate-500 bg-slate-800 active:bg-slate-700'}`}>
                             <${StickyNote} size=${16} />
                           </button>
-                          <!-- ✨ Check button turns amber on PR -->
+                          <!-- ✨ Check button: dashed outline when prefill, solid when confirmed -->
                           <button onClick=${() => updateSet(exIdx, setIdx, 'completed', !set.completed)} className=${`w-10 h-11 rounded-xl flex items-center justify-center transition-all ${
                             isPR          ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' :
                             set.completed ? 'bg-emerald-500 text-white shadow-lg' :
+                            prefill       ? 'bg-slate-800 text-slate-600 border-2 border-dashed border-slate-600 active:bg-slate-700' :
                                             'bg-slate-800 text-slate-600 active:bg-slate-700'
                           }`}>
                             <${Check} size=${20} />
