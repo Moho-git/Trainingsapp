@@ -22,24 +22,33 @@ export const ActiveWorkout = ({
 }) => {
   const [isStarted, setIsStarted] = useState(session ? session.isStarted : !!editingWorkout);
 
-  // ✨ Pre-fill sets with last session's weight/reps, mark as prefill
+  // ✨ Pre-fill: find last workout with same templateId, fall back to any workout with that exercise
   const [exercises, setExercises] = useState(() => {
     if (!session) return [];
+
+    // Prefer last workout from the same template
+    const lastSameTemplate = history?.find(w => w.templateId === session.templateId);
+
     return session.exercises.map(ex => {
-      const lastData = history?.find(w => w.exercises.some(e => e.exerciseId === ex.exerciseId))
-        ?.exercises.find(e => e.exerciseId === ex.exerciseId);
-      const lastSet = lastData?.sets[0];
-      if (!lastSet) return ex;
-      return {
-        ...ex,
-        sets: ex.sets.map(set => ({
-          ...set,
-          weight: lastSet.weight || 0,
-          reps: lastSet.reps || 0,
-          rir: lastSet.rir || 0,
-          isPrefill: true,   // grayed out until user confirms
-        }))
-      };
+      // Try same-template workout first, then any workout with this exercise
+      const lastWorkout = lastSameTemplate
+        ?? history?.find(w => w.exercises.some(e => e.exerciseId === ex.exerciseId));
+      const lastExData = lastWorkout?.exercises.find(e => e.exerciseId === ex.exerciseId);
+
+      if (!lastExData || lastExData.sets.length === 0) return ex;
+
+      // ✨ Reproduce the exact number of sets from last session
+      const prefillSets = lastExData.sets.map(s => ({
+        id: generateId(),
+        weight: s.weight || 0,
+        reps: s.reps || 0,
+        rir: s.rir || 0,
+        note: '',
+        completed: false,
+        isPrefill: true,
+      }));
+
+      return { ...ex, sets: prefillSets };
     });
   });
 
