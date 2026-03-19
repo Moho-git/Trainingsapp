@@ -70,7 +70,10 @@ const App = () => {
   useEffect(() => {
     const handlePopState = (event) => {
       const state = event.state || {};
-      
+        if (selectedExerciseDetail) {
+          setSelectedExerciseDetail(null);
+          return;
+        }
       console.log('🔙 Browser Back Button gedrückt. State:', state);
 
       // EBENE 1: Wenn Browser-State sagt inWorkout === true, aber React-State ist false
@@ -108,7 +111,7 @@ const App = () => {
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [activeTab, previousTab, isViewingActiveWorkout, workoutToEdit]);
+  }, [activeTab, previousTab, isViewingActiveWorkout, workoutToEdit, selectedExerciseDetail]);
 
   // Persistence Effects
   useEffect(() => { localStorage.setItem('kraftlog_history', JSON.stringify(history)); }, [history]);
