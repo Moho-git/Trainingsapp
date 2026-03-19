@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import htm from 'htm';
 import { Save, Plus, Check, ChevronLeft, Trash2, X, AlertTriangle, ChevronUp, ChevronDown, Minimize2, StickyNote, Edit2, History as HistoryIcon, ArrowUpRight } from 'lucide-react';
 
@@ -22,12 +21,49 @@ export const ActiveWorkout = ({
   onViewExerciseDetail
 }) => {
   const [isStarted, setIsStarted] = useState(session ? session.isStarted : !!editingWorkout);
-  const [exercises, setExercises] = useState(session ? session.exercises : []);
+
+  // ✨ Pre-fill sets with last session's weight/reps
+  const [exercises, setExercises] = useState(() => {
+    if (!session) return [];
+    return session.exercises.map(ex => {
+      const lastData = history?.find(w => w.exercises.some(e => e.exerciseId === ex.exerciseId))
+        ?.exercises.find(e => e.exerciseId === ex.exerciseId);
+      const lastSet = lastData?.sets[0];
+      if (!lastSet) return ex;
+      return {
+        ...ex,
+        sets: ex.sets.map(set => ({
+          ...set,
+          weight: lastSet.weight || 0,
+          reps: lastSet.reps || 0,
+          rir: lastSet.rir || 0,
+        }))
+      };
+    });
+  });
+
   const [sessionName, setSessionName] = useState(session?.name || editingWorkout?.name || 'Workout');
   const [isEditingName, setIsEditingName] = useState(false);
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [confirmState, setConfirmState] = useState('none');
   const [expandedNotes, setExpandedNotes] = useState({});
+  // ✨ State to toggle visibility of last session notes per exercise
+  const [showLastNotes, setShowLastNotes] = useState({});
+
+  // ✨ Personal Records: compute max weight per exercise across all history
+  const personalRecords = useMemo(() => {
+    const records = {};
+    history?.forEach(workout => {
+      workout.exercises.forEach(ex => {
+        ex.sets.forEach(set => {
+          if (set.weight > (records[ex.exerciseId] || 0)) {
+            records[ex.exerciseId] = set.weight;
+          }
+        });
+      });
+    });
+    return records;
+  }, [history]);
 
   useEffect(() => {
     if (editingWorkout) {
@@ -184,6 +220,12 @@ export const ActiveWorkout = ({
         <!-- EXERCISE LIST -->
         ${exercises.map((ex, exIdx) => {
           const lastData = getLastSessionData(ex.exerciseId);
+          // ✨ Collect sets from last session that had notes (with their set number)
+          const lastNoteSets = (lastData?.sets || []).reduce((acc, s, idx) => {
+            if (s.note && s.note.trim()) acc.push({ ...s, setNumber: idx + 1 });
+            return acc;
+          }, []);
+
           if (!isStarted) {
             return html`
               <div key=${exIdx} className="flex items-center gap-2 bg-slate-900 p-2.5 rounded-xl border border-slate-800 shadow-sm transition-all">
@@ -196,6 +238,7 @@ export const ActiveWorkout = ({
                   ${lastData && html`
                     <p className="text-[8px] text-emerald-500/60 font-black uppercase tracking-widest flex items-center gap-1 mt-0.5">
                       <${HistoryIcon} size=${8} /> Letztes Mal: ${lastData.sets[0]?.weight}kg x ${lastData.sets[0]?.reps}
+                      ${lastNoteSets.length > 0 && html`<span className="text-amber-500/60 ml-1">📝</span>`}
                     </p>
                   `}
                 </div>
@@ -207,38 +250,78 @@ export const ActiveWorkout = ({
               </div>
             `;
           } else {
+            // ✨ PR for this exercise = max weight across all completed history
+            const prRecord = personalRecords[ex.exerciseId] || 0;
             return html`
               <div key=${exIdx} className="bg-slate-900 rounded-[32px] border border-slate-800 overflow-hidden shadow-2xl mb-4">
-               <div className="px-5 py-4 bg-slate-800/30 border-b border-slate-800 flex justify-between items-center">
-                 <div>
-                   <h3 
-                      onClick=${() => onViewExerciseDetail && onViewExerciseDetail(allExercises.find(e => e.id === ex.exerciseId))}
-                      className="text-sm font-black text-slate-100 uppercase tracking-tight truncate mr-2 hover:text-emerald-400 transition-colors cursor-pointer"
-                    >${getExerciseName(ex.exerciseId)}</h3>
-                    ${lastData && html`
-                      <p className="text-[9px] font-bold text-emerald-500/40 flex items-center gap-1 mt-0.5 uppercase tracking-tighter">
-                         Peak: ${Math.max(...lastData.sets.map(s => s.weight))}kg
-                      </p>
-                    `}
-                  </div>
-                  <div className="flex gap-1 shrink-0">
-                     <button onClick=${() => moveExercise(exIdx, -1)} disabled=${exIdx === 0} className="p-1.5 text-slate-500 disabled:opacity-0 active:scale-125 transition-all"><${ChevronUp} size=${18} /></button>
-                     <button onClick=${() => moveExercise(exIdx, 1)} disabled=${exIdx === exercises.length - 1} className="p-1.5 text-slate-500 disabled:opacity-0 active:scale-125 transition-all"><${ChevronDown} size=${18} /></button>
+                <!-- Exercise Header -->
+                <div className="px-5 py-4 bg-slate-800/30 border-b border-slate-800">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1 min-w-0">
+                      <h3 
+                        onClick=${() => onViewExerciseDetail && onViewExerciseDetail(allExercises.find(e => e.id === ex.exerciseId))}
+                        className="text-sm font-black text-slate-100 uppercase tracking-tight truncate mr-2 hover:text-emerald-400 transition-colors cursor-pointer"
+                      >${getExerciseName(ex.exerciseId)}</h3>
+                      ${lastData && html`
+                        <p className="text-[9px] font-bold text-emerald-500/40 flex items-center gap-1 mt-0.5 uppercase tracking-tighter">
+                          Peak: ${Math.max(...lastData.sets.map(s => s.weight))}kg
+                        </p>
+                      `}
+                      <!-- ✨ Note indicator: show badge + expandable content if last session had notes -->
+                      ${lastNoteSets.length > 0 && html`
+                        <button
+                          onClick=${() => setShowLastNotes(prev => ({ ...prev, [exIdx]: !prev[exIdx] }))}
+                          className="flex items-center gap-1.5 text-[9px] font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20 mt-1.5 active:bg-amber-500/20 transition-all"
+                        >
+                          <${StickyNote} size=${10} />
+                          ${lastNoteSets.length} Notiz${lastNoteSets.length > 1 ? 'en' : ''} vom letzten Training
+                          <span className="text-amber-500/40">${showLastNotes[exIdx] ? '▲' : '▼'}</span>
+                        </button>
+                      `}
+                      ${showLastNotes[exIdx] && lastNoteSets.length > 0 && html`
+                        <div className="mt-2 space-y-1.5">
+                          ${lastNoteSets.map((s, i) => html`
+                            <div key=${i} className="text-[10px] text-amber-200/60 bg-amber-500/5 px-3 py-2 rounded-xl border border-amber-500/10 italic leading-relaxed">
+                              <span className="not-italic font-black text-[8px] text-amber-500/50 uppercase tracking-widest mr-1.5">Satz ${s.setNumber}:</span>${s.note}
+                            </div>
+                          `)}
+                        </div>
+                      `}
+                    </div>
+                    <div className="flex gap-1 shrink-0 ml-2">
+                      <button onClick=${() => moveExercise(exIdx, -1)} disabled=${exIdx === 0} className="p-1.5 text-slate-500 disabled:opacity-0 active:scale-125 transition-all"><${ChevronUp} size=${18} /></button>
+                      <button onClick=${() => moveExercise(exIdx, 1)} disabled=${exIdx === exercises.length - 1} className="p-1.5 text-slate-500 disabled:opacity-0 active:scale-125 transition-all"><${ChevronDown} size=${18} /></button>
+                    </div>
                   </div>
                 </div>
+
+                <!-- Sets -->
                 <div className="p-2 space-y-3">
                   ${ex.sets.map((set, setIdx) => {
                     const hasNote = set.note && set.note.trim().length > 0;
                     const prevSet = lastData?.sets[setIdx];
+                    // ✨ PR: weight strictly beats all-time best (and we have history to compare)
+                    const isPR = set.completed && set.weight > 0 && prRecord > 0 && set.weight > prRecord;
                     return html`
                     <div key=${set.id} className="space-y-1">
                       ${prevSet && html`
                         <div className="flex items-center gap-1.5 text-[9px] font-black text-emerald-500/30 ml-12 mb-0.5 uppercase tracking-tighter">
-                          <${ArrowUpRight} size=${10} /> Letztes Mal: ${prevSet.weight}kg x ${prevSet.reps} ${prevSet.rir !== undefined ? html`@ ${prevSet.rir}R` : ''}
+                          <${ArrowUpRight} size=${10} /> Letztes Mal: ${prevSet.weight}kg x ${prevSet.reps}${prevSet.rir ? html` @ ${prevSet.rir}R` : ''}
                         </div>
                       `}
-                      <div className=${`grid grid-cols-12 gap-1 items-center p-2 rounded-2xl border transition-all ${set.completed ? 'bg-emerald-600/10 border-emerald-500/30' : hasNote ? 'bg-red-500/5 border-red-500/40 shadow-[0_0_10px_rgba(239,68,68,0.1)]' : 'bg-slate-950/40 border-slate-800'}`}>
-                        <div className="col-span-1 text-[9px] font-black text-slate-700 text-center">${setIdx + 1}</div>
+                      <div className=${`grid grid-cols-12 gap-1 items-center p-2 rounded-2xl border transition-all ${
+                        isPR            ? 'bg-amber-500/10 border-amber-400/50 shadow-[0_0_12px_rgba(251,191,36,0.15)]' :
+                        set.completed   ? 'bg-emerald-600/10 border-emerald-500/30' :
+                        hasNote         ? 'bg-red-500/5 border-red-500/40 shadow-[0_0_10px_rgba(239,68,68,0.1)]' :
+                                          'bg-slate-950/40 border-slate-800'
+                      }`}>
+                        <!-- ✨ Set number or PR trophy -->
+                        <div className="col-span-1 flex items-center justify-center text-[9px] font-black">
+                          ${isPR
+                            ? html`<span className="text-base leading-none" title="Neuer Persönlicher Rekord!">🏆</span>`
+                            : html`<span className="text-slate-700">${setIdx + 1}</span>`
+                          }
+                        </div>
                         <div className="col-span-3">
                           <input type="number" step="0.5" inputMode="decimal" value=${set.weight || ''} placeholder="kg" onChange=${e => updateSet(exIdx, setIdx, 'weight', e.target.value)} className="w-full bg-slate-800 text-center py-3 rounded-xl border border-slate-700 font-black text-sm text-white outline-none focus:border-emerald-500 transition-all" />
                         </div>
@@ -255,7 +338,12 @@ export const ActiveWorkout = ({
                           <button onClick=${() => toggleNote(set.id)} className=${`w-8 h-10 flex items-center justify-center rounded-xl transition-all ${hasNote ? 'text-white bg-red-600 shadow-lg' : 'text-slate-500 bg-slate-800 active:bg-slate-700'}`}>
                             <${StickyNote} size=${16} />
                           </button>
-                          <button onClick=${() => updateSet(exIdx, setIdx, 'completed', !set.completed)} className=${`w-10 h-11 rounded-xl flex items-center justify-center transition-all ${set.completed ? 'bg-emerald-500 text-white shadow-lg' : 'bg-slate-800 text-slate-600 active:bg-slate-700'}`}>
+                          <!-- ✨ Check button turns amber on PR -->
+                          <button onClick=${() => updateSet(exIdx, setIdx, 'completed', !set.completed)} className=${`w-10 h-11 rounded-xl flex items-center justify-center transition-all ${
+                            isPR          ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' :
+                            set.completed ? 'bg-emerald-500 text-white shadow-lg' :
+                                            'bg-slate-800 text-slate-600 active:bg-slate-700'
+                          }`}>
                             <${Check} size=${20} />
                           </button>
                         </div>
