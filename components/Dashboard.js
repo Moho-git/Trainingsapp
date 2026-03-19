@@ -118,29 +118,7 @@ export const Dashboard = ({
     return history.filter(w => w.date.startsWith(prefix)).length;
   }, [history]);
 
-  // Longest current streak
-  const currentStreak = useMemo(() => {
-    const days = new Set(history.map(w => w.date.split('T')[0]));
-    let streak = 0;
-    const d = new Date();
-    d.setHours(0,0,0,0);
-    while (true) {
-      const key = d.toISOString().split('T')[0];
-      if (days.has(key)) {
-        streak++;
-        d.setDate(d.getDate() - 1);
-      } else {
-        // allow today to not yet be trained (check yesterday as fallback)
-        if (streak === 0) {
-          d.setDate(d.getDate() - 1);
-          const key2 = d.toISOString().split('T')[0];
-          if (days.has(key2)) { d.setDate(d.getDate() + 1); continue; }
-        }
-        break;
-      }
-    }
-    return streak;
-  }, [history]);
+
 
   return html`
     <div className="space-y-6 pb-24">
@@ -278,11 +256,6 @@ export const Dashboard = ({
                 <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                   ${totalThisMonth} diesen Monat
                 </span>
-                ${currentStreak > 1 && html`
-                  <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-                    🔥 ${currentStreak} Tage Serie
-                  </span>
-                `}
               </div>
             </div>
             <span className="text-[10px] font-bold text-slate-600">${history.length} gesamt</span>
