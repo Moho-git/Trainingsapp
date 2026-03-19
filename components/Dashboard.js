@@ -1,9 +1,10 @@
-
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import htm from 'htm';
 import { Play, Download, Upload, ShieldCheck, Scale, Plus, Settings, Trash2, Edit2, X, Check, ChevronUp, ChevronDown, Activity } from 'lucide-react';
 
 const html = htm.bind(React.createElement);
+
+const MONTH_NAMES = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
 
 export const Dashboard = ({ 
   templates, 
@@ -68,6 +69,78 @@ export const Dashboard = ({
       setEditingTemplate({ ...editingTemplate, exercises: [...current, exId] });
     }
   };
+
+  // ✨ Heatmap: 16 weeks of training frequency, Mon–Sun columns
+  const heatmapWeeks = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // Count workouts per calendar day
+    const countPerDay = {};
+    history.forEach(w => {
+      const key = w.date.split('T')[0];
+      countPerDay[key] = (countPerDay[key] || 0) + 1;
+    });
+
+    // Find start: Monday of the week 16 weeks ago
+    const startDate = new Date();
+    const dow = (startDate.getDay() + 6) % 7; // Mon=0, Sun=6
+    startDate.setDate(startDate.getDate() - dow - 15 * 7);
+    startDate.setHours(0, 0, 0, 0);
+
+    const weeks = [];
+    const cur = new Date(startDate);
+
+    for (let w = 0; w < 16; w++) {
+      const week = [];
+      for (let d = 0; d < 7; d++) {
+        const y = cur.getFullYear();
+        const m = String(cur.getMonth() + 1).padStart(2, '0');
+        const day = String(cur.getDate()).padStart(2, '0');
+        const dateStr = `${y}-${m}-${day}`;
+        week.push({
+          dateStr,
+          count: countPerDay[dateStr] || 0,
+          isFuture: dateStr > todayStr,
+          month: cur.getMonth(),
+        });
+        cur.setDate(cur.getDate() + 1);
+      }
+      // Show month label when month changes on Monday
+      week[0].showMonth = weeks.length === 0 || weeks[weeks.length - 1][0].month !== week[0].month;
+      weeks.push(week);
+    }
+    return weeks;
+  }, [history]);
+
+  const totalThisMonth = useMemo(() => {
+    const now = new Date();
+    const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return history.filter(w => w.date.startsWith(prefix)).length;
+  }, [history]);
+
+  // Longest current streak
+  const currentStreak = useMemo(() => {
+    const days = new Set(history.map(w => w.date.split('T')[0]));
+    let streak = 0;
+    const d = new Date();
+    d.setHours(0,0,0,0);
+    while (true) {
+      const key = d.toISOString().split('T')[0];
+      if (days.has(key)) {
+        streak++;
+        d.setDate(d.getDate() - 1);
+      } else {
+        // allow today to not yet be trained (check yesterday as fallback)
+        if (streak === 0) {
+          d.setDate(d.getDate() - 1);
+          const key2 = d.toISOString().split('T')[0];
+          if (days.has(key2)) { d.setDate(d.getDate() + 1); continue; }
+        }
+        break;
+      }
+    }
+    return streak;
+  }, [history]);
 
   return html`
     <div className="space-y-6 pb-24">
@@ -191,6 +264,76 @@ export const Dashboard = ({
             </div>
           </div>
         </div>
+      `}
+
+      <!-- ✨ Trainings-Heatmap -->
+      ${history.length > 0 && html`
+        <section className="bg-slate-900/50 p-6 rounded-[32px] border border-slate-800">
+          <div className="flex justify-between items-start mb-5">
+            <div>
+              <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <${Activity} className="w-4 h-4 text-emerald-500" /> Aktivität
+              </h2>
+              <div className="flex gap-3 mt-1.5">
+                <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                  ${totalThisMonth} diesen Monat
+                </span>
+                ${currentStreak > 1 && html`
+                  <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                    🔥 ${currentStreak} Tage Serie
+                  </span>
+                `}
+              </div>
+            </div>
+            <span className="text-[10px] font-bold text-slate-600">${history.length} gesamt</span>
+          </div>
+
+          <!-- Grid -->
+          <div className="flex gap-2">
+            <!-- Day-of-week labels -->
+            <div className="flex flex-col gap-[3px] pt-[18px] shrink-0">
+              ${['Mo', '', 'Mi', '', 'Fr', '', 'So'].map((label, i) => html`
+                <div key=${i} style=${{ height: '14px' }} className="w-4 flex items-center text-[8px] text-slate-600 font-bold">${label}</div>
+              `)}
+            </div>
+            <!-- Week columns (scrollable) -->
+            <div className="overflow-x-auto flex-1 pb-1">
+              <div className="flex gap-[3px]" style=${{ width: 'max-content' }}>
+                ${heatmapWeeks.map((week, wIdx) => html`
+                  <div key=${wIdx} className="flex flex-col gap-[3px]">
+                    <!-- Month label -->
+                    <div style=${{ height: '14px' }} className="text-[8px] text-slate-500 font-bold leading-none flex items-center">
+                      ${week[0].showMonth ? MONTH_NAMES[week[0].month] : ''}
+                    </div>
+                    <!-- 7 day cells -->
+                    ${week.map((day, dIdx) => html`
+                      <div
+                        key=${dIdx}
+                        title=${day.count > 0 ? `${day.dateStr}: ${day.count} Training${day.count > 1 ? 's' : ''}` : day.dateStr}
+                        style=${{ width: '14px', height: '14px' }}
+                        className=${`rounded-[3px] transition-all ${
+                          day.isFuture   ? 'bg-transparent' :
+                          day.count === 0 ? 'bg-slate-800' :
+                          day.count >= 2  ? 'bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,0.4)]' :
+                                            'bg-emerald-700'
+                        }`}
+                      />
+                    `)}
+                  </div>
+                `)}
+              </div>
+            </div>
+          </div>
+
+          <!-- Legend -->
+          <div className="flex items-center gap-1.5 mt-4 justify-end">
+            <span className="text-[8px] text-slate-600 font-bold uppercase mr-1">Weniger</span>
+            <div style=${{ width:'14px', height:'14px' }} className="rounded-[3px] bg-slate-800"></div>
+            <div style=${{ width:'14px', height:'14px' }} className="rounded-[3px] bg-emerald-700"></div>
+            <div style=${{ width:'14px', height:'14px' }} className="rounded-[3px] bg-emerald-400"></div>
+            <span className="text-[8px] text-slate-600 font-bold uppercase ml-1">Mehr</span>
+          </div>
+        </section>
       `}
 
       <section className="bg-slate-900/50 p-6 rounded-[32px] border border-slate-800 space-y-4">
