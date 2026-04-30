@@ -22,22 +22,25 @@ export const ActiveWorkout = ({
 }) => {
   const [isStarted, setIsStarted] = useState(session ? session.isStarted : !!editingWorkout);
 
-  // ✨ Pre-fill: find last workout with same templateId, fall back to any workout with that exercise
   const [exercises, setExercises] = useState(() => {
     if (!session) return [];
 
-    // Prefer last workout from the same template
+    // 🔧 FIX: Wenn das Training bereits läuft, Session-Daten direkt übernehmen
+    // — niemals mit History-Prefill überschreiben!
+    if (session.isStarted) {
+      return session.exercises;
+    }
+
+    // Neues Training (Planungsphase) — Prefill aus History anwenden
     const lastSameTemplate = history?.find(w => w.templateId === session.templateId);
 
     return session.exercises.map(ex => {
-      // Try same-template workout first, then any workout with this exercise
       const lastWorkout = lastSameTemplate
         ?? history?.find(w => w.exercises.some(e => e.exerciseId === ex.exerciseId));
       const lastExData = lastWorkout?.exercises.find(e => e.exerciseId === ex.exerciseId);
 
       if (!lastExData || lastExData.sets.length === 0) return ex;
 
-      // ✨ Reproduce the exact number of sets from last session
       const prefillSets = lastExData.sets.map(s => ({
         id: generateId(),
         weight: s.weight || 0,
