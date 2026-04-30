@@ -119,12 +119,14 @@ const App = () => {
   useEffect(() => { localStorage.setItem('kraftlog_weights', JSON.stringify(weightLogs)); }, [weightLogs]);
   useEffect(() => { localStorage.setItem('kraftlog_templates', JSON.stringify(templates)); }, [templates]);
   useEffect(() => {
-    if (activeWorkoutSession) {
-      localStorage.setItem('kraftlog_active_session', JSON.stringify(activeWorkoutSession));
+    // 🔧 viewingSession hat immer die aktuellsten Daten (auch vor "Training Starten")
+    const toSave = viewingSession ?? activeWorkoutSession;
+    if (toSave) {
+      localStorage.setItem('kraftlog_active_session', JSON.stringify(toSave));
     } else {
       localStorage.removeItem('kraftlog_active_session');
     }
-  }, [activeWorkoutSession]);
+  }, [viewingSession, activeWorkoutSession]);
 
   // Handlers
   const deleteWorkout = useCallback((id) => {
@@ -217,9 +219,7 @@ const App = () => {
         history=${history}
         onUpdateSession=${(updated) => {
           setViewingSession(updated);
-          if (activeWorkoutSession && updated.sessionId === activeWorkoutSession.sessionId) {
-            setActiveWorkoutSession(updated);
-          }
+          setActiveWorkoutSession(updated); // 🔧 Immer synchron halten
         }}
         onConfirmStart=${(session) => {
           setActiveWorkoutSession({ ...session, isStarted: true });
@@ -228,7 +228,7 @@ const App = () => {
         onFinish=${handleFinishWorkout}
         onCancel=${() => { 
           setIsViewingActiveWorkout(false); 
-          setViewingSession(null); 
+          // 🔧 viewingSession NICHT löschen — Daten für Fortsetzung bewahren
           setWorkoutToEdit(null);
           window.history.replaceState({ screen: 'dashboard', tab: activeTab, inWorkout: false }, '');
         }}
@@ -268,7 +268,11 @@ const App = () => {
               weightLogs=${weightLogs}
               activeWorkoutSession=${activeWorkoutSession}
               onContinueWorkout=${() => {
-                setViewingSession(activeWorkoutSession);
+                // 🔧 Falls viewingSession noch da ist (Tab-Wechsel), direkt nutzen
+                // Falls App neu gestartet wurde, aus activeWorkoutSession (localStorage) wiederherstellen
+                if (!viewingSession) {
+                  setViewingSession(activeWorkoutSession);
+                }
                 setIsViewingActiveWorkout(true);
                 window.history.pushState({ screen: 'workout', tab: activeTab, inWorkout: true }, '');
               }}
